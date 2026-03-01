@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "07",
+  "goal": "Implement reports and dashboard summary queries",
+  "tasks": [
+    {
+      "name": "Create spending-by-category aggregation query",
+      "files": [
+        "internal/service/reports.go",
+        "internal/service/reports_test.go"
+      ],
+      "microSteps": [
+        "Create ReportService struct with ent.Client dependency",
+        "Implement SpendingByCategory(ctx, householdID, startDate, endDate): returns []CategorySpend{categoryID, name, total_cents, percentage}",
+        "Query: sum transaction entries grouped by category within date range, only expense-type entries",
+        "Calculate percentage of total for each category",
+        "Sort by total descending",
+        "Write tests with multiple categories and transactions"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/... -run TestSpendingByCategory"],
+        "passingVerify": ["go test ./internal/service/... -run TestSpendingByCategory"]
+      },
+      "action": "Aggregate expense entries by category for a date range. Returns category name, total spent, and percentage of overall spending.",
+      "verify": ["go test ./internal/service/..."]
+    },
+    {
+      "name": "Create income vs expense monthly trend query",
+      "files": [
+        "internal/service/reports.go",
+        "internal/service/reports_test.go"
+      ],
+      "microSteps": [
+        "Implement MonthlyTrend(ctx, householdID, months int): returns []MonthSummary{month, income_cents, expense_cents, net_cents}",
+        "Query: sum income entries and expense entries per month for the last N months",
+        "Calculate net (income - expense) per month",
+        "Return sorted by month ascending",
+        "Write tests covering months with no data (should return zeros)"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/... -run TestMonthlyTrend"],
+        "passingVerify": ["go test ./internal/service/... -run TestMonthlyTrend"]
+      },
+      "action": "Calculate income, expense, and net totals per month for the last N months. Months with no data return zeros. Used for the P&L bar chart.",
+      "verify": ["go test ./internal/service/..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Create dashboard summary query and wire all reports to GraphQL",
+      "files": [
+        "internal/service/reports.go",
+        "graph/schema.graphqls",
+        "graph/report.resolvers.go"
+      ],
+      "microSteps": [
+        "Implement DashboardSummary(ctx, householdID): returns {total_balance_cents, total_income_cents (this month), total_spending_cents (this month), safe_to_spend_cents, recent_transactions[]}",
+        "total_balance = sum of all asset account balances",
+        "safe_to_spend = total_balance - sum of remaining budget commitments",
+        "recent_transactions = last 10 posted transactions",
+        "Add GraphQL types: DashboardSummary, CategorySpend, MonthSummary",
+        "Add queries: dashboardSummary(householdID), spendingByCategory(householdID, startDate, endDate), monthlyTrend(householdID, months)",
+        "Implement resolvers calling ReportService",
+        "Run gqlgen generate"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./...", "go vet ./..."]
+      },
+      "action": "Dashboard summary aggregates balance, income, spending, and safe-to-spend for the current month. Wire all report queries through GraphQL.",
+      "verify": ["go build ./...", "go test ./...", "go vet ./..."],
+      "blockedBy": [0, 1]
+    }
+  ],
+  "planVerify": ["go build ./...", "go test ./..."],
+  "commitMessage": "feat(household-ledger): add reports and dashboard summary queries",
+  "timestamp": "2026-03-01T23:45:00Z"
+}

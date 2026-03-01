@@ -22,4 +22,12 @@
 # Task description cache (generated, not source)
 .cnogo/task-descriptions-*.json
 .cnogo/prompt-*.md
+# Python venv for cnogo scripts
+.cnogo/.venv/
 # <<< cnogo
+
+# Environment
+.env
+
+# Build artifacts
+/expense-planner

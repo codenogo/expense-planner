@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "feature": "household-ledger",
+  "displayName": "Household Ledger",
+  "timestamp": "2026-03-01T23:30:00Z",
+  "decisions": [
+    {
+      "area": "api",
+      "decision": "GraphQL via gqlgen",
+      "rationale": "Schema-first with code generation. 10.7k stars, actively maintained, built-in subscriptions and dataloaders. Best Go GraphQL lib for type safety and ecosystem."
+    },
+    {
+      "area": "data-layer",
+      "decision": "ent (Facebook entity framework) + entgql",
+      "rationale": "Code-first entity schema, auto migrations, type-safe queries, integrates with gqlgen via entgql extension. Generates both DB models and GraphQL types from one source."
+    },
+    {
+      "area": "database",
+      "decision": "PostgreSQL",
+      "rationale": "Full-featured relational DB. Best for double-entry accounting with referential integrity, aggregation queries for reports."
+    },
+    {
+      "area": "auth",
+      "decision": "JWT (access token + refresh token)",
+      "rationale": "Stateless access tokens for API. HTTP-only cookie refresh tokens. Standard for SPA + GraphQL."
+    },
+    {
+      "area": "frontend",
+      "decision": "React + TypeScript",
+      "rationale": "Largest ecosystem, best GraphQL client support (Apollo/urql), TypeScript for type safety across the stack."
+    },
+    {
+      "area": "currency",
+      "decision": "KES (Kenya Shilling) as base currency, single currency for MVP",
+      "rationale": "Primary user base. Multi-currency deferred to post-MVP."
+    },
+    {
+      "area": "money-storage",
+      "decision": "Integer cents (minor units as int64)",
+      "rationale": "KES 1,500.50 stored as 150050. No floating point errors. Standard practice for financial applications."
+    },
+    {
+      "area": "accounting-model",
+      "decision": "Double-entry ledger, hidden behind simple UX",
+      "rationale": "User adds expenses/income through simple forms. Backend creates balanced journal entries. Gives consistent balances, audit trails, and extensibility without exposing complexity."
+    },
+    {
+      "area": "categories",
+      "decision": "Detailed hierarchical with Kenyan household presets",
+      "rationale": "Ship with: Food (Groceries/Eating Out/Market), Transport (Matatu/Uber/Fuel), Rent, Utilities (KPLC/Water/Internet), Airtime & Data, Healthcare, Education, Entertainment, Shopping, Savings. Users can customize."
+    },
+    {
+      "area": "sharing-model",
+      "decision": "Pooled income household — not IOU/split-based",
+      "rationale": "All income flows into the household. All expenses draw from it. Members see a unified view. Not Splitwise-style debt tracking."
+    },
+    {
+      "area": "entry-methods",
+      "decision": "Manual entry + CSV import for MVP",
+      "rationale": "Manual quick-add for daily expenses. CSV import for bulk bank statement ingestion with configurable column mapping."
+    },
+    {
+      "area": "deployment",
+      "decision": "Docker-ready, cloud platform TBD",
+      "rationale": "Containerize from start. Pick cloud platform (Fly.io, Railway, AWS) later."
+    }
+  ],
+  "constraints": [
+    "Go backend (stdlib-first where possible, ent/gqlgen for data/API)",
+    "PostgreSQL database",
+    "React + TypeScript frontend (responsive, dashboard-first)",
+    "Manual entry + CSV import for MVP",
+    "KES single currency for MVP",
+    "Pooled income household model",
+    "Integer cents for money storage",
+    "Double-entry ledger hidden behind simple UX",
+    "Hierarchical categories with Kenyan presets"
+  ],
+  "openQuestions": [
+    "React GraphQL client: Apollo Client vs urql vs Relay?",
+    "CSS framework: Tailwind CSS vs Chakra UI vs shadcn/ui?",
+    "Dashboard dark theme implementation approach?",
+    "CSV column mapping UX — wizard vs drag-and-drop?",
+    "Household invite flow — email link vs invite code?",
+    "Budget rollover behavior — carry forward or reset monthly?"
+  ],
+  "relatedCode": [
+    "cmd/expense-planner/main.go",
+    "docs/planning/work/ideas/expense-tracker/BRAINSTORM.md",
+    "docs/planning/work/ideas/expense-tracker/BRAINSTORM.json"
+  ]
+}

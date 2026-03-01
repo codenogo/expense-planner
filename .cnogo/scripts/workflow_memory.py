@@ -1157,9 +1157,8 @@ def cmd_graph_enrich(args: argparse.Namespace) -> int:
 
     repo = getattr(args, "repo", None) or "."
     keywords = [k.strip() for k in args.keywords.split(",")]
-    limit = getattr(args, "limit", 20)
 
-    result = enrich_context(repo, keywords=keywords, limit=limit)
+    result = enrich_context(repo, keywords=keywords)
 
     if getattr(args, "json", False):
         print(json.dumps(result))

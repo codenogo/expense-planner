@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "06",
+  "goal": "Implement CSV bank statement import with column mapping",
+  "tasks": [
+    {
+      "name": "Create CSV parser with configurable column mapping",
+      "files": [
+        "internal/service/csv_import.go",
+        "internal/service/csv_import_test.go"
+      ],
+      "microSteps": [
+        "Define ColumnMapping struct: date_col, amount_col, description_col, debit_col (optional), credit_col (optional), date_format",
+        "Define ImportRow struct: date, amount_cents, description, raw_row",
+        "Implement ParseCSV(reader io.Reader, mapping ColumnMapping) -> []ImportRow",
+        "Handle both single-amount and split debit/credit column formats",
+        "Parse dates with configurable format string",
+        "Handle negative amounts as expenses, positive as income",
+        "Write table-driven tests with sample bank CSVs (KCB, Equity, M-PESA statement formats)"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/... -run TestParseCSV"],
+        "passingVerify": ["go test ./internal/service/... -run TestParseCSV"]
+      },
+      "action": "Build a CSV parser that accepts a column mapping config and produces structured import rows. Support both single-amount and split debit/credit column layouts common in Kenyan bank statements.",
+      "verify": ["go test ./internal/service/..."]
+    },
+    {
+      "name": "Create import preview and commit flow",
+      "files": [
+        "internal/service/csv_import.go",
+        "internal/service/csv_import_test.go"
+      ],
+      "microSteps": [
+        "Implement PreviewImport: parse CSV, return rows with auto-detected categories (by merchant keyword matching)",
+        "Implement CommitImport: take previewed rows with user-confirmed categories, create transactions via TransactionService",
+        "Skip duplicate detection: check if transaction with same date+amount+description exists",
+        "Return import summary: total imported, skipped duplicates, total amount",
+        "Write tests for preview and commit flows including duplicate skip"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/... -run TestImport"],
+        "passingVerify": ["go test ./internal/service/... -run TestImport"]
+      },
+      "action": "Build import preview (parse + auto-categorize) and commit (create transactions) flow. Include duplicate detection by date+amount+description.",
+      "verify": ["go test ./internal/service/..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Create CSV import GraphQL mutations",
+      "files": [
+        "graph/schema.graphqls",
+        "graph/import.resolvers.go"
+      ],
+      "microSteps": [
+        "Add GraphQL types: ColumnMapping input, ImportPreviewRow, ImportSummary",
+        "Add mutation: previewCSVImport(file: Upload!, mapping: ColumnMappingInput!, householdID: ID!): [ImportPreviewRow!]!",
+        "Add mutation: commitCSVImport(householdID: ID!, rows: [ImportRowInput!]!): ImportSummary!",
+        "Add query: bankPresets: [BankPreset!]! — returns preset column mappings for KCB, Equity, M-PESA",
+        "Implement resolvers calling csv_import service",
+        "Run gqlgen generate"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./...", "go vet ./..."]
+      },
+      "action": "Wire CSV import through GraphQL with file upload support. Include bank presets for common Kenyan banks.",
+      "verify": ["go build ./...", "go vet ./..."],
+      "blockedBy": [1]
+    }
+  ],
+  "planVerify": ["go build ./...", "go test ./..."],
+  "commitMessage": "feat(household-ledger): add CSV bank statement import with column mapping",
+  "timestamp": "2026-03-01T23:45:00Z"
+}

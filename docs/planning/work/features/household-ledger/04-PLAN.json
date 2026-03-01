@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "04",
+  "goal": "Implement double-entry transaction system with expense/income GraphQL mutations",
+  "tasks": [
+    {
+      "name": "Create Transaction and TransactionEntry ent schemas",
+      "files": [
+        "ent/schema/transaction.go",
+        "ent/schema/transaction_entry.go"
+      ],
+      "microSteps": [
+        "Create ent/schema/transaction.go: description, date (time.Time), status enum (pending|posted), created_at",
+        "Add edges: Transaction -> Household, Transaction -> User (created_by), Transaction -> TransactionEntries, Transaction -> Category (optional, for UX), Transaction -> Tags",
+        "Create ent/schema/transaction_entry.go: amount_cents (int64, positive=debit, negative=credit)",
+        "Add edges: TransactionEntry -> Transaction, TransactionEntry -> Account",
+        "Add entgql annotations on both",
+        "Run go generate ./ent"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./..."]
+      },
+      "action": "Define Transaction (journal header) and TransactionEntry (journal legs) entities. Every transaction has entries that sum to zero (double-entry invariant).",
+      "verify": ["go generate ./ent", "go build ./..."]
+    },
+    {
+      "name": "Create transaction service with double-entry logic",
+      "files": [
+        "internal/service/transaction.go",
+        "internal/service/transaction_test.go"
+      ],
+      "microSteps": [
+        "Create TransactionService struct with ent.Client dependency",
+        "Implement AddExpense(ctx, householdID, userID, amount, categoryID, description, date): creates Transaction + 2 entries (debit expense account, credit asset account)",
+        "Implement AddIncome(ctx, householdID, userID, amount, categoryID, description, date): creates Transaction + 2 entries (debit asset account, credit income account)",
+        "Validate double-entry invariant: assert sum of entries = 0",
+        "Update account balances atomically within ent transaction",
+        "Write table-driven tests: add expense, add income, verify balances, verify entry sums"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/..."],
+        "passingVerify": ["go test ./internal/service/..."]
+      },
+      "action": "Implement the core transaction service that abstracts double-entry accounting. User says 'spent 500 on groceries' -> service creates balanced journal entries. All mutations wrapped in DB transactions.",
+      "verify": ["go test ./internal/service/..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Create expense/income GraphQL mutations",
+      "files": [
+        "graph/schema.graphqls",
+        "graph/transaction.resolvers.go"
+      ],
+      "microSteps": [
+        "Add AddExpenseInput type to schema: amount (Int, in cents), categoryID, description, date, accountID (optional, defaults to main asset), tags (optional)",
+        "Add AddIncomeInput type to schema: amount, categoryID, description, date, accountID (optional)",
+        "Add mutations: addExpense(input: AddExpenseInput!): Transaction!, addIncome(input: AddIncomeInput!): Transaction!",
+        "Add query: transactions(householdID, first, after, filters): TransactionConnection!",
+        "Implement resolvers calling TransactionService",
+        "Enforce auth middleware: require authenticated user with household membership",
+        "Run gqlgen generate"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./...", "go vet ./..."]
+      },
+      "action": "Wire expense and income entry through GraphQL. User-facing mutations accept simple inputs; resolvers call TransactionService which handles double-entry internally.",
+      "verify": ["go build ./...", "go vet ./..."],
+      "blockedBy": [1]
+    }
+  ],
+  "planVerify": ["go build ./...", "go test ./..."],
+  "commitMessage": "feat(household-ledger): add double-entry transaction system with expense/income mutations",
+  "timestamp": "2026-03-01T23:45:00Z"
+}

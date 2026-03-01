@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "05",
+  "goal": "Add budgets, tags, and recurring bills tracking",
+  "tasks": [
+    {
+      "name": "Create Budget ent schema with monthly tracking",
+      "files": [
+        "ent/schema/budget.go",
+        "internal/service/budget.go",
+        "internal/service/budget_test.go"
+      ],
+      "microSteps": [
+        "Create ent/schema/budget.go: month (string YYYY-MM), amount_cents (int64), rollover (bool, default false)",
+        "Add edges: Budget -> Household, Budget -> Category",
+        "Add unique index on (household_id, category_id, month)",
+        "Add entgql annotations (QueryField, Mutations)",
+        "Create internal/service/budget.go: GetBudgetProgress(householdID, month) returns category budgets with spent amounts",
+        "Query spent amounts by summing transaction entries for each category in the month",
+        "Write test: create budget, add expenses, verify progress calculation"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/..."],
+        "passingVerify": ["go test ./internal/service/..."]
+      },
+      "action": "Define Budget entity tied to a category and month. Budget service calculates progress by summing expense entries per category per month. Supports rollover flag for carry-forward.",
+      "verify": ["go generate ./ent", "go build ./...", "go test ./internal/service/..."]
+    },
+    {
+      "name": "Create Tag ent schema with transaction tagging",
+      "files": [
+        "ent/schema/tag.go"
+      ],
+      "microSteps": [
+        "Create ent/schema/tag.go: name (string), color (optional string)",
+        "Add edges: Tag -> Household, Tag -> Transactions (many-to-many)",
+        "Add unique index on (household_id, name)",
+        "Add entgql annotations (QueryField, Mutations)",
+        "Update Transaction schema to add Tags edge (many-to-many)",
+        "Run go generate ./ent"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./..."]
+      },
+      "action": "Define Tag entity for flexible transaction labeling. Many-to-many relationship with transactions. Tags are household-scoped.",
+      "verify": ["go generate ./ent", "go build ./..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Create RecurringBill ent schema with status tracking",
+      "files": [
+        "ent/schema/recurring_bill.go",
+        "internal/service/bills.go"
+      ],
+      "microSteps": [
+        "Create ent/schema/recurring_bill.go: name, amount_cents, due_day (int 1-31), frequency enum (monthly|weekly|annual), status enum (paid|pending|overdue)",
+        "Add edges: RecurringBill -> Household, RecurringBill -> Category",
+        "Add entgql annotations",
+        "Create internal/service/bills.go: UpdateBillStatuses(householdID) — marks bills overdue if past due_day and not paid",
+        "Add GraphQL query: recurringBills(householdID) with filtering by status",
+        "Run go generate ./ent"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./..."]
+      },
+      "action": "Define RecurringBill entity for monthly bills tracking (rent, KPLC, Netflix). Bills have a due day and status (paid/pending/overdue). Service auto-marks overdue bills.",
+      "verify": ["go generate ./ent", "go build ./..."],
+      "blockedBy": [0]
+    }
+  ],
+  "planVerify": ["go build ./...", "go test ./..."],
+  "commitMessage": "feat(household-ledger): add budgets, tags, and recurring bills",
+  "timestamp": "2026-03-01T23:45:00Z"
+}

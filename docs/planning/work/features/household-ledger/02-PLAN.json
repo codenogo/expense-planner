@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "02",
+  "goal": "Implement user authentication with JWT (register, login, refresh, middleware)",
+  "tasks": [
+    {
+      "name": "Create User ent schema with password hashing",
+      "files": [
+        "ent/schema/user.go",
+        "internal/service/auth.go"
+      ],
+      "microSteps": [
+        "Create ent/schema/user.go with fields: name, email (unique), password_hash, created_at, updated_at",
+        "Add entgql annotations (QueryField, Mutations) — exclude password_hash from GraphQL",
+        "Create internal/service/auth.go with HashPassword and CheckPassword using bcrypt",
+        "Run go generate ./ent to generate ent code",
+        "Write test for HashPassword/CheckPassword round-trip"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/..."],
+        "passingVerify": ["go test ./internal/service/..."]
+      },
+      "action": "Define User entity in ent with email uniqueness. Create auth service with bcrypt password hashing. Ensure password_hash is never exposed via GraphQL.",
+      "verify": ["go generate ./ent", "go build ./...", "go test ./internal/service/..."]
+    },
+    {
+      "name": "Implement JWT token generation and validation",
+      "files": [
+        "internal/service/jwt.go",
+        "internal/service/jwt_test.go"
+      ],
+      "microSteps": [
+        "Add github.com/golang-jwt/jwt/v5 dependency",
+        "Create internal/service/jwt.go with GenerateAccessToken, GenerateRefreshToken, ValidateToken",
+        "Access token: 15 min expiry, contains user_id and email",
+        "Refresh token: 7 day expiry, contains user_id only",
+        "Write table-driven tests for token generation and validation",
+        "Test expired token rejection, invalid signature rejection"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test ./internal/service/..."],
+        "passingVerify": ["go test ./internal/service/..."]
+      },
+      "action": "Implement JWT access and refresh token generation/validation using golang-jwt/v5. Access tokens expire in 15 minutes, refresh tokens in 7 days.",
+      "verify": ["go test ./internal/service/..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Create auth GraphQL mutations and JWT middleware",
+      "files": [
+        "graph/schema.graphqls",
+        "graph/auth.resolvers.go",
+        "internal/middleware/auth.go"
+      ],
+      "microSteps": [
+        "Add auth mutations to schema.graphqls: register(input), login(input), refreshToken(token)",
+        "Define RegisterInput, LoginInput, AuthPayload types in schema",
+        "Implement register resolver: validate input, hash password, create user, return tokens",
+        "Implement login resolver: find user by email, check password, return tokens",
+        "Implement refreshToken resolver: validate refresh token, issue new access token",
+        "Create internal/middleware/auth.go: extract JWT from Authorization header, inject user into context",
+        "Wire middleware in main.go",
+        "Run gqlgen generate"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./...", "go vet ./..."]
+      },
+      "action": "Create GraphQL mutations for register, login, refreshToken. Create auth middleware that extracts JWT and injects user context. Wire into server.",
+      "verify": ["go build ./...", "go vet ./..."],
+      "blockedBy": [1]
+    }
+  ],
+  "planVerify": ["go build ./...", "go test ./..."],
+  "commitMessage": "feat(household-ledger): add user authentication with JWT",
+  "timestamp": "2026-03-01T23:45:00Z"
+}

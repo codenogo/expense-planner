@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "01",
+  "goal": "Bootstrap ent + gqlgen + PostgreSQL foundation with Docker dev environment",
+  "tasks": [
+    {
+      "name": "Initialize ent and gqlgen scaffolding",
+      "files": [
+        "ent/entc.go",
+        "ent/generate.go",
+        "ent/schema/.gitkeep",
+        "gqlgen.yml",
+        "graph/resolver.go",
+        "graph/schema.graphqls",
+        "tools.go"
+      ],
+      "microSteps": [
+        "Add Go dependencies: ent, entgql, gqlgen, pgx/v5",
+        "Create ent/entc.go with entgql extension (schema generator, config path)",
+        "Create ent/generate.go with go:generate directive",
+        "Create gqlgen.yml with ent autobind and schema paths",
+        "Create graph/resolver.go with Resolver struct holding *ent.Client",
+        "Create graph/schema.graphqls with root Query type and health field",
+        "Create tools.go with blank imports for ent and gqlgen CLI",
+        "Run go mod tidy to resolve all dependencies"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./..."]
+      },
+      "action": "Set up ent ORM with entgql extension and gqlgen GraphQL server scaffolding. Follow entgo.io official integration guide. Use pgx/v5 as the PostgreSQL driver.",
+      "verify": ["go build ./...", "go vet ./..."]
+    },
+    {
+      "name": "Wire GraphQL server in main.go with PostgreSQL connection",
+      "files": [
+        "cmd/expense-planner/main.go",
+        "internal/config/config.go"
+      ],
+      "microSteps": [
+        "Create internal/config/config.go to load DATABASE_URL, PORT, JWT_SECRET from env",
+        "Rewrite cmd/expense-planner/main.go to open PostgreSQL via pgx, create ent client",
+        "Add auto-migration on startup (client.Schema.Create)",
+        "Mount gqlgen handler at /query, playground at /",
+        "Keep /health endpoint",
+        "Add entgql.Transactioner middleware for transaction-wrapped mutations"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./cmd/expense-planner"],
+        "passingVerify": ["go build ./cmd/expense-planner"]
+      },
+      "action": "Wire the GraphQL server into main.go with PostgreSQL connection, ent client, and auto-migration. Load config from environment variables.",
+      "verify": ["go build ./cmd/expense-planner", "go vet ./..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Add Docker Compose for PostgreSQL and Dockerfile for the app",
+      "files": [
+        "docker-compose.yml",
+        "Dockerfile",
+        ".env.example"
+      ],
+      "microSteps": [
+        "Create docker-compose.yml with PostgreSQL 16 service (port 5432, volume for data)",
+        "Create .env.example with DATABASE_URL, PORT, JWT_SECRET placeholders",
+        "Create multi-stage Dockerfile (build with Go, run with distroless/static)",
+        "Add .env to .gitignore",
+        "Verify docker compose config is valid"
+      ],
+      "tdd": {
+        "required": false,
+        "reason": "Infrastructure files — verified by docker compose config and go build"
+      },
+      "action": "Create Docker Compose for local PostgreSQL dev environment and a production Dockerfile for the Go app.",
+      "verify": ["docker compose config --quiet", "go build ./cmd/expense-planner"],
+      "blockedBy": [1]
+    }
+  ],
+  "planVerify": ["go build ./cmd/expense-planner", "go vet ./..."],
+  "commitMessage": "feat(household-ledger): bootstrap ent + gqlgen + PostgreSQL foundation",
+  "timestamp": "2026-03-01T23:45:00Z"
+}
