@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+"""
+Render markdown artifacts from JSON contracts to reduce drift.
+
+Supported:
+- features/<feature>/<NN>-PLAN.json -> <NN>-PLAN.md (regenerates tasks section)
+- features/<feature>/<NN>-SUMMARY.json -> <NN>-SUMMARY.md (regenerates tables)
+
+This is intentionally simple and deterministic.
+"""
+
+from __future__ import annotations
+
+try:
+    import _bootstrap  # noqa: F401
+except ImportError:
+    pass  # imported as module; caller manages sys.path
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+from workflow_utils import load_json
+
+
+def write(path: Path, text: str) -> None:
+    path.write_text(text, encoding="utf-8")
+
+
+def render_plan(plan: dict[str, Any]) -> str:
+    feature = plan.get("feature", "[feature]")
+    pn = plan.get("planNumber", "NN")
+    goal = plan.get("goal", "")
+    schema_version_raw = plan.get("schemaVersion", 1)
+    schema_version = schema_version_raw if isinstance(schema_version_raw, int) and not isinstance(schema_version_raw, bool) else 1
+    tasks = plan.get("tasks", []) if isinstance(plan.get("tasks"), list) else []
+    plan_verify = plan.get("planVerify", [])
+    commit_msg = plan.get("commitMessage", "")
+
+    lines: list[str] = []
+    lines.append(f"# Plan {pn}: {goal or '[Short Title]'}")
+    lines.append("")
+    lines.append("## Goal")
+    lines.append(goal or "[One sentence: what this plan delivers]")
+    lines.append("")
+    lines.append("## Tasks")
+    lines.append("")
+    for i, t in enumerate(tasks, start=1):
+        if not isinstance(t, dict):
+            continue
+        name = t.get("name", f"Task {i}")
+        files = t.get("files", [])
+        verify = t.get("verify", [])
+        action = t.get("action", "")
+        cwd = t.get("cwd")
+        lines.append(f"### Task {i}: {name}")
+        if cwd:
+            lines.append(f"**CWD:** `{cwd}`")
+        if isinstance(files, list) and files:
+            lines.append("**Files:** " + ", ".join(f"`{f}`" for f in files))
+        else:
+            lines.append("**Files:** `[add files]`")
+        lines.append("**Action:**")
+        lines.append(action or "[Specific instructions]")
+        lines.append("")
+        if schema_version >= 2:
+            micro_steps = t.get("microSteps", [])
+            lines.append("**Micro-steps:**")
+            if isinstance(micro_steps, list) and micro_steps:
+                for step in micro_steps:
+                    lines.append(f"- {step}")
+            else:
+                lines.append("- [Add microSteps[] entries]")
+            lines.append("")
+
+            tdd = t.get("tdd", {})
+            lines.append("**TDD:**")
+            if isinstance(tdd, dict):
+                required = tdd.get("required")
+                if required is True:
+                    failing_verify = tdd.get("failingVerify", [])
+                    passing_verify = tdd.get("passingVerify", [])
+                    lines.append("- required: `true`")
+                    lines.append("- failingVerify:")
+                    if isinstance(failing_verify, list) and failing_verify:
+                        for cmd in failing_verify:
+                            lines.append(f"  - `{cmd}`")
+                    else:
+                        lines.append("  - `[add failingVerify command]`")
+                    lines.append("- passingVerify:")
+                    if isinstance(passing_verify, list) and passing_verify:
+                        for cmd in passing_verify:
+                            lines.append(f"  - `{cmd}`")
+                    else:
+                        lines.append("  - `[add passingVerify command]`")
+                elif required is False:
+                    lines.append("- required: `false`")
+                    lines.append(f"- reason: {tdd.get('reason') or '[non-rationalized exemption reason]'}")
+                else:
+                    lines.append("- required: `[true|false]`")
+            else:
+                lines.append("- required: `[true|false]`")
+            lines.append("")
+        lines.append("**Verify:**")
+        lines.append("```bash")
+        if isinstance(verify, list) and verify:
+            for v in verify:
+                lines.append(str(v))
+        else:
+            lines.append("[Command to verify this task]")
+        lines.append("```")
+        lines.append("")
+        lines.append("**Done when:** [Observable outcome]")
+        lines.append("")
+
+    lines.append("## Verification")
+    lines.append("")
+    lines.append("After all tasks:")
+    lines.append("```bash")
+    if isinstance(plan_verify, list) and plan_verify:
+        for v in plan_verify:
+            lines.append(str(v))
+    else:
+        lines.append("[Commands to verify the plan is complete]")
+    lines.append("```")
+    lines.append("")
+    lines.append("## Commit Message")
+    lines.append("```")
+    lines.append(commit_msg or f"feat({feature}): [description]")
+    lines.append("```")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_summary(summary: dict[str, Any]) -> str:
+    pn = summary.get("planNumber", "NN")
+    outcome = summary.get("outcome", "complete")
+    changes = summary.get("changes", [])
+    verification = summary.get("verification", [])
+    commit = summary.get("commit", {})
+
+    lines: list[str] = []
+    lines.append(f"# Plan {pn} Summary")
+    lines.append("")
+    lines.append("## Outcome")
+    lines.append(f"{outcome}")
+    lines.append("")
+    lines.append("## Changes Made")
+    lines.append("")
+    lines.append("| File | Change |")
+    lines.append("|------|--------|")
+    if isinstance(changes, list) and changes:
+        for c in changes:
+            if isinstance(c, dict):
+                lines.append(f"| `{c.get('file','')}` | {c.get('change','')} |")
+    else:
+        lines.append("| `path/to/file` | [what changed] |")
+    lines.append("")
+    lines.append("## Verification Results")
+    lines.append("")
+    if isinstance(verification, list) and verification:
+        for v in verification:
+            lines.append(f"- {v}")
+    else:
+        lines.append("- [verification results]")
+    lines.append("")
+    lines.append("## Commit")
+    if isinstance(commit, dict):
+        h = commit.get("hash", "")
+        m = commit.get("message", "")
+        lines.append(f"`{h}` - {m}".strip())
+    else:
+        lines.append("`abc123f` - [commit message]")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_quick_plan(plan: dict[str, Any]) -> str:
+    """Render markdown for quick-task PLAN.json contracts."""
+    goal = str(plan.get("goal", "")).strip()
+    approach = str(plan.get("approach", "")).strip()
+    files = plan.get("files", [])
+    verify = plan.get("verify", [])
+
+    lines: list[str] = []
+    lines.append(f"# Quick: {goal or '[Quick task]'}")
+    lines.append("")
+    lines.append("## Goal")
+    lines.append(goal or "[What this accomplishes]")
+    lines.append("")
+    lines.append("## Files")
+    if isinstance(files, list) and files:
+        for fp in files:
+            lines.append(f"- `{fp}`")
+    else:
+        lines.append("- `path/to/file`")
+    lines.append("")
+    lines.append("## Approach")
+    lines.append(approach or "[Brief description]")
+    lines.append("")
+    lines.append("## Verify")
+    lines.append("```bash")
+    if isinstance(verify, list) and verify:
+        for v in verify:
+            lines.append(str(v))
+    else:
+        lines.append("[How to verify]")
+    lines.append("```")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def render_quick_summary(summary: dict[str, Any]) -> str:
+    """Render markdown for quick-task SUMMARY.json contracts."""
+    outcome = str(summary.get("outcome", "complete"))
+    changes = summary.get("changes", [])
+    verification = summary.get("verification", [])
+    commit = summary.get("commit", {})
+
+    lines: list[str] = []
+    lines.append("# Quick Summary")
+    lines.append("")
+    lines.append("## Outcome")
+    lines.append(outcome)
+    lines.append("")
+    lines.append("## Changes")
+    lines.append("| File | Change |")
+    lines.append("|------|--------|")
+    if isinstance(changes, list) and changes:
+        for c in changes:
+            if isinstance(c, dict):
+                lines.append(f"| `{c.get('file','')}` | {c.get('change','')} |")
+    else:
+        lines.append("| `path/to/file` | [what changed] |")
+    lines.append("")
+    lines.append("## Verification")
+    if isinstance(verification, list) and verification:
+        for v in verification:
+            lines.append(f"- {v}")
+    else:
+        lines.append("- [verification results]")
+    lines.append("")
+    lines.append("## Commit")
+    if isinstance(commit, dict):
+        h = commit.get("hash", "")
+        m = commit.get("message", "")
+        lines.append(f"`{h}` - {m}".strip())
+    else:
+        lines.append("`abc123f` - [commit message]")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Render markdown artifacts from JSON contracts.")
+    parser.add_argument("json_file", help="Path to JSON contract file.")
+    args = parser.parse_args()
+
+    jf = Path(args.json_file)
+    if not jf.exists():
+        raise SystemExit(f"File not found: {jf}")
+    data = load_json(jf)
+    if not isinstance(data, dict):
+        raise SystemExit("Contract must be a JSON object.")
+
+    if jf.name.endswith("-PLAN.json"):
+        md = jf.with_name(jf.name.replace(".json", ".md"))
+        write(md, render_plan(data))
+        print(f"✅ Rendered {md}")
+        return 0
+    if jf.name.endswith("-SUMMARY.json"):
+        md = jf.with_name(jf.name.replace(".json", ".md"))
+        write(md, render_summary(data))
+        print(f"✅ Rendered {md}")
+        return 0
+    if jf.name == "PLAN.json":
+        md = jf.with_name("PLAN.md")
+        write(md, render_quick_plan(data))
+        print(f"✅ Rendered {md}")
+        return 0
+    if jf.name == "SUMMARY.json":
+        md = jf.with_name("SUMMARY.md")
+        write(md, render_quick_summary(data))
+        print(f"✅ Rendered {md}")
+        return 0
+
+    raise SystemExit(
+        "Unsupported contract type. Use *-PLAN.json, *-SUMMARY.json, PLAN.json, or SUMMARY.json."
+    )
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

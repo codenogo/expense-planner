@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "topic": "Household Expense Tracker — Personal to Shared",
+  "slug": "expense-tracker",
+  "timestamp": "2026-03-01T23:00:00Z",
+  "questionsAsked": [
+    "Who are the primary users of this expense tracker?",
+    "What is the primary client for MVP?",
+    "How should expenses be entered for MVP?",
+    "What is your deployment target?",
+    "What database do you prefer?",
+    "What level of shared expense features for MVP?",
+    "Multi-currency support in MVP?"
+  ],
+  "constraints": [
+    "Go backend (stdlib-first)",
+    "PostgreSQL database",
+    "Web app client (responsive, dashboard-first)",
+    "Manual entry + CSV import for MVP",
+    "Single base currency for MVP",
+    "Pooled income household model (not IOU/split-based)",
+    "Cloud managed deployment"
+  ],
+  "candidates": [
+    {
+      "name": "Household Ledger",
+      "summary": "Double-entry household finance system. Income pools into the household, expenses draw from it. Abstracted from users behind simple add-expense UX. Firefly III-inspired ledger with household member roles. Phase 1 is a standalone solo tracker, Phase 2 adds household sharing.",
+      "risks": [
+        "Double-entry complexity hidden from UI but present in data model — careful API abstraction needed",
+        "CSV import variance across banks — configurable column mapping required",
+        "Household permission edge cases — start with simple owner/member roles"
+      ],
+      "mvp": [
+        "Auth (signup/login/JWT)",
+        "Manual expense/income entry",
+        "Categories (preset + custom, hierarchical) and tags",
+        "Dashboard (balance, income vs spending, category breakdown, recent transactions)",
+        "Monthly budgets per category with progress",
+        "Household creation + member invites",
+        "CSV import with column mapping",
+        "Monthly bills tracker (recurring with paid/pending/overdue)",
+        "Rules engine (auto-categorize by merchant)",
+        "Reports (category breakdown, monthly trends)"
+      ]
+    },
+    {
+      "name": "Flex Wallet",
+      "summary": "Multi-wallet system with personal AND shared wallets. Each user maintains private wallets alongside household shared wallets. Monarch Money-inspired with visibility tiers. More flexible for couples who keep some finances separate.",
+      "risks": [
+        "Wallet sprawl confuses UX — need smart defaults",
+        "Aggregated reporting across multiple wallets adds complexity",
+        "Privacy model edge cases with visibility tiers"
+      ],
+      "mvp": [
+        "Everything in Household Ledger MVP",
+        "Plus: multi-wallet CRUD",
+        "Plus: per-wallet visibility controls (shared/personal)",
+        "Plus: inter-wallet transfers"
+      ]
+    },
+    {
+      "name": "Envelope Budget",
+      "summary": "Visual envelope budgeting inspired by YNAB/Goodbudget. Income fills envelopes, spending drains them. Simpler mental model but significantly less extensible. No double-entry, no multi-account support.",
+      "risks": [
+        "Cannot add multi-account or transfer tracking without a rewrite",
+        "Limited audit trail compared to double-entry",
+        "Dead-end architecture for future features (bank sync, investments)"
+      ],
+      "mvp": [
+        "Auth",
+        "Envelope CRUD (create budgets per category)",
+        "Income allocation to envelopes",
+        "Expense entry (drains envelope)",
+        "Dashboard with visual envelope depletion",
+        "Household sharing of envelope view"
+      ]
+    }
+  ],
+  "recommendation": {
+    "primary": "Household Ledger",
+    "backup": "Flex Wallet",
+    "reasoning": "Double-entry is the right foundation — abstracted from users but gives consistent reporting, balance tracking, and extensibility. Pooled income is native to this model. Phase 1 ships as a useful solo tracker. Flex Wallet is the backup if users need separate finances alongside shared ones — can be layered on top of the ledger later."
+  }
+}
