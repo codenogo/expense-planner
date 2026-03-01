@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Placeholder is the client for interacting with the Placeholder builders.
 	Placeholder *PlaceholderClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
 
 	// lazily loaded.
 	client     *Client
@@ -146,6 +148,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Placeholder = NewPlaceholderClient(tx.config)
+	tx.User = NewUserClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

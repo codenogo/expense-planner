@@ -2,3 +2,31 @@ extend type Query {
   """Health check endpoint."""
   health: Boolean!
 }
+
+type Mutation {
+  """Register a new user account."""
+  register(input: RegisterInput!): AuthPayload!
+
+  """Log in with email and password."""
+  login(input: LoginInput!): AuthPayload!
+
+  """Get a new access token using a refresh token."""
+  refreshToken(token: String!): AuthPayload!
+}
+
+input RegisterInput {
+  name: String!
+  email: String!
+  password: String!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String!
+  user: User!
+}

@@ -6,9 +6,11 @@ require (
 	entgo.io/contrib v0.7.0
 	entgo.io/ent v0.14.5
 	github.com/99designs/gqlgen v0.17.87
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/vektah/gqlparser/v2 v2.5.32
+	golang.org/x/crypto v0.48.0
 	golang.org/x/sync v0.19.0
 )
 

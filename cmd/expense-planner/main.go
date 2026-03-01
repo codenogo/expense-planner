@@ -12,6 +12,8 @@ import (
 	"github.com/expenser/expense-planner/ent"
 	"github.com/expenser/expense-planner/graph"
 	"github.com/expenser/expense-planner/internal/config"
+	"github.com/expenser/expense-planner/internal/middleware"
+	"github.com/expenser/expense-planner/internal/service"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -32,15 +34,21 @@ func main() {
 		log.Fatalf("running schema migration: %v", err)
 	}
 
+	// Create JWT service.
+	jwtSvc := service.NewJWTService(cfg.JWTSecret)
+
 	// Create GraphQL server.
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &graph.Resolver{Client: client},
+		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc},
 	}))
 	srv.Use(entgql.Transactioner{TxOpener: client})
 
+	// Apply auth middleware.
+	authMiddleware := middleware.Auth(jwtSvc)
+
 	mux := http.NewServeMux()
 	mux.Handle("GET /", playground.Handler("Expense Planner", "/query"))
-	mux.Handle("/query", srv)
+	mux.Handle("/query", authMiddleware(srv))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, `{"status":"ok"}`)
