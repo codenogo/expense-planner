@@ -29,3 +29,38 @@ export const CREATE_BUDGET_MUTATION = gql`
     }
   }
 `
+
+export const RECURRING_BILLS_QUERY = gql`
+  query RecurringBills {
+    recurringBills {
+      id
+      name
+      amountCents
+      dueDay
+      frequency
+      status
+      createdAt
+      category {
+        id
+        name
+      }
+    }
+  }
+`
+
+export const CREATE_RECURRING_BILL_MUTATION = gql`
+  mutation CreateRecurringBill($input: CreateRecurringBillInput!) {
+    createRecurringBill(input: $input) {
+      id
+      name
+      amountCents
+      dueDay
+      frequency
+      status
+      category {
+        id
+        name
+      }
+    }
+  }
+`
