@@ -4,6 +4,10 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { LoginPage } from '@/pages/login'
 import { RegisterPage } from '@/pages/register'
 import { DashboardPage } from '@/pages/dashboard'
+import { TransactionsPage } from '@/pages/transactions/index'
+import { AddExpensePage } from '@/pages/transactions/add-expense'
+import { AddIncomePage } from '@/pages/transactions/add-income'
+import { Toaster } from '@/components/ui/sonner'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -16,6 +20,7 @@ function PlaceholderPage({ title }: { title: string }) {
 
 export default function App() {
   return (
+    <>
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
@@ -25,7 +30,9 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
-          <Route path="transactions" element={<PlaceholderPage title="Transactions" />} />
+          <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="transactions/add-expense" element={<AddExpensePage />} />
+          <Route path="transactions/add-income" element={<AddIncomePage />} />
           <Route path="import" element={<PlaceholderPage title="Import" />} />
           <Route path="reports" element={<PlaceholderPage title="Reports" />} />
           <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
@@ -33,5 +40,7 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    <Toaster />
+    </>
   )
 }
