@@ -10,7 +10,9 @@ import (
 
 type AddExpenseInput struct {
 	// Amount in cents (e.g., 50000 = KES 500).
-	Amount      int       `json:"amount"`
+	Amount int `json:"amount"`
+	// Household to record expense in.
+	HouseholdID int       `json:"householdID"`
 	CategoryID  int       `json:"categoryID"`
 	Description string    `json:"description"`
 	Date        time.Time `json:"date"`
@@ -20,7 +22,9 @@ type AddExpenseInput struct {
 
 type AddIncomeInput struct {
 	// Amount in cents (e.g., 100000 = KES 1000).
-	Amount      int       `json:"amount"`
+	Amount int `json:"amount"`
+	// Household to record income in.
+	HouseholdID int       `json:"householdID"`
 	CategoryID  int       `json:"categoryID"`
 	Description string    `json:"description"`
 	Date        time.Time `json:"date"`

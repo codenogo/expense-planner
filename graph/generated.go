@@ -8890,7 +8890,7 @@ func (ec *executionContext) unmarshalInputAddExpenseInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amount", "categoryID", "description", "date", "accountID"}
+	fieldsInOrder := [...]string{"amount", "householdID", "categoryID", "description", "date", "accountID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -8904,6 +8904,13 @@ func (ec *executionContext) unmarshalInputAddExpenseInput(ctx context.Context, o
 				return it, err
 			}
 			it.Amount = data
+		case "householdID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("householdID"))
+			data, err := ec.unmarshalNID2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HouseholdID = data
 		case "categoryID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryID"))
 			data, err := ec.unmarshalNID2int(ctx, v)
@@ -8944,7 +8951,7 @@ func (ec *executionContext) unmarshalInputAddIncomeInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"amount", "categoryID", "description", "date", "accountID"}
+	fieldsInOrder := [...]string{"amount", "householdID", "categoryID", "description", "date", "accountID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -8958,6 +8965,13 @@ func (ec *executionContext) unmarshalInputAddIncomeInput(ctx context.Context, ob
 				return it, err
 			}
 			it.Amount = data
+		case "householdID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("householdID"))
+			data, err := ec.unmarshalNID2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HouseholdID = data
 		case "categoryID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryID"))
 			data, err := ec.unmarshalNID2int(ctx, v)

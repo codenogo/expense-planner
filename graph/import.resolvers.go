@@ -26,6 +26,20 @@ func (r *mutationResolver) PreviewCSVImport(ctx context.Context, csvContent stri
 		return nil, fmt.Errorf("authentication required")
 	}
 
+	// Validate column mapping indices are non-negative.
+	if mapping.DateCol < 0 || mapping.DescriptionCol < 0 || mapping.SkipRows < 0 {
+		return nil, fmt.Errorf("column indices and skipRows must be non-negative")
+	}
+	if mapping.AmountCol != nil && *mapping.AmountCol < 0 {
+		return nil, fmt.Errorf("amountCol must be non-negative")
+	}
+	if mapping.DebitCol != nil && *mapping.DebitCol < 0 {
+		return nil, fmt.Errorf("debitCol must be non-negative")
+	}
+	if mapping.CreditCol != nil && *mapping.CreditCol < 0 {
+		return nil, fmt.Errorf("creditCol must be non-negative")
+	}
+
 	colMapping := service.ColumnMapping{
 		DateCol:        mapping.DateCol,
 		AmountCol:      mapping.AmountCol,
@@ -99,12 +113,15 @@ func (r *mutationResolver) CommitCSVImport(ctx context.Context, householdID int,
 		return nil, fmt.Errorf("no expense account found for household")
 	}
 
-	incomeAcctID, _ := r.Client.Account.Query().
+	incomeAcctID, err := r.Client.Account.Query().
 		Where(
 			account.HasHouseholdWith(household.ID(householdID)),
 			account.TypeEQ(account.TypeIncome),
 		).
 		FirstID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("no income account found for household")
+	}
 
 	commitRows := make([]service.CommitRow, len(rows))
 	for i, row := range rows {

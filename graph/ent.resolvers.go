@@ -7,8 +7,19 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/expenser/expense-planner/ent"
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
+	"github.com/expenser/expense-planner/ent/category"
+	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
+	"github.com/expenser/expense-planner/ent/transaction"
+	"github.com/expenser/expense-planner/ent/transactionentry"
+	"github.com/expenser/expense-planner/internal/middleware"
 )
 
 // Node is the resolver for the node field.
@@ -23,52 +34,114 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 
 // Accounts is the resolver for the accounts field.
 func (r *queryResolver) Accounts(ctx context.Context) ([]*ent.Account, error) {
-	return r.Client.Account.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Account.Query().
+		Where(account.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // Budgets is the resolver for the budgets field.
 func (r *queryResolver) Budgets(ctx context.Context) ([]*ent.Budget, error) {
-	return r.Client.Budget.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Budget.Query().
+		Where(budget.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // Categories is the resolver for the categories field.
 func (r *queryResolver) Categories(ctx context.Context) ([]*ent.Category, error) {
-	return r.Client.Category.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Category.Query().
+		Where(category.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // Households is the resolver for the households field.
 func (r *queryResolver) Households(ctx context.Context) ([]*ent.Household, error) {
-	return r.Client.Household.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Household.Query().
+		Where(household.IDIn(hhIDs...)).
+		All(ctx)
 }
 
 // HouseholdMembers is the resolver for the householdMembers field.
 func (r *queryResolver) HouseholdMembers(ctx context.Context) ([]*ent.HouseholdMember, error) {
-	return r.Client.HouseholdMember.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.HouseholdMember.Query().
+		Where(householdmember.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // RecurringBills is the resolver for the recurringBills field.
 func (r *queryResolver) RecurringBills(ctx context.Context) ([]*ent.RecurringBill, error) {
-	return r.Client.RecurringBill.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.RecurringBill.Query().
+		Where(recurringbill.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // Tags is the resolver for the tags field.
 func (r *queryResolver) Tags(ctx context.Context) ([]*ent.Tag, error) {
-	return r.Client.Tag.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Tag.Query().
+		Where(tag.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // Transactions is the resolver for the transactions field.
 func (r *queryResolver) Transactions(ctx context.Context) ([]*ent.Transaction, error) {
-	return r.Client.Transaction.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.Transaction.Query().
+		Where(transaction.HasHouseholdWith(household.IDIn(hhIDs...))).
+		All(ctx)
 }
 
 // TransactionEntries is the resolver for the transactionEntries field.
 func (r *queryResolver) TransactionEntries(ctx context.Context) ([]*ent.TransactionEntry, error) {
-	return r.Client.TransactionEntry.Query().All(ctx)
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	return r.Client.TransactionEntry.Query().
+		Where(transactionentry.HasAccountWith(account.HasHouseholdWith(household.IDIn(hhIDs...)))).
+		All(ctx)
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
-	return r.Client.User.Query().All(ctx)
+	uc := middleware.UserFromContext(ctx)
+	if uc == nil {
+		return nil, fmt.Errorf("authentication required")
+	}
+	u, err := r.Client.User.Get(ctx, uc.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return []*ent.User{u}, nil
 }
 
 // Query returns QueryResolver implementation.

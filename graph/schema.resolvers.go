@@ -139,18 +139,15 @@ func (r *mutationResolver) AddExpense(ctx context.Context, input model.AddExpens
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	// Find the user's household membership.
-	member, err := r.Client.HouseholdMember.Query().
+	// Verify user belongs to the specified household.
+	_, err := r.Client.HouseholdMember.Query().
 		Where(
 			householdmember.HasUserWith(user.ID(uc.UserID)),
+			householdmember.HasHouseholdWith(household.ID(input.HouseholdID)),
 		).
 		First(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("user has no household membership")
-	}
-	householdID, err := member.QueryHousehold().FirstID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("resolving household: %w", err)
+		return nil, fmt.Errorf("user is not a member of this household")
 	}
 
 	// Resolve asset account.
@@ -160,7 +157,7 @@ func (r *mutationResolver) AddExpense(ctx context.Context, input model.AddExpens
 	} else {
 		assetAcctID, err = r.Client.Account.Query().
 			Where(
-				account.HasHouseholdWith(household.ID(householdID)),
+				account.HasHouseholdWith(household.ID(input.HouseholdID)),
 				account.TypeEQ(account.TypeAsset),
 			).
 			FirstID(ctx)
@@ -172,7 +169,7 @@ func (r *mutationResolver) AddExpense(ctx context.Context, input model.AddExpens
 	// Find first expense account for this household.
 	expenseAcctID, err := r.Client.Account.Query().
 		Where(
-			account.HasHouseholdWith(household.ID(householdID)),
+			account.HasHouseholdWith(household.ID(input.HouseholdID)),
 			account.TypeEQ(account.TypeExpense),
 		).
 		FirstID(ctx)
@@ -181,7 +178,7 @@ func (r *mutationResolver) AddExpense(ctx context.Context, input model.AddExpens
 	}
 
 	return r.TxnSvc.AddExpense(ctx, service.AddExpenseInput{
-		HouseholdID:   householdID,
+		HouseholdID:   input.HouseholdID,
 		UserID:        uc.UserID,
 		AmountCents:   int64(input.Amount),
 		CategoryID:    input.CategoryID,
@@ -199,18 +196,15 @@ func (r *mutationResolver) AddIncome(ctx context.Context, input model.AddIncomeI
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	// Find the user's household membership.
-	member, err := r.Client.HouseholdMember.Query().
+	// Verify user belongs to the specified household.
+	_, err := r.Client.HouseholdMember.Query().
 		Where(
 			householdmember.HasUserWith(user.ID(uc.UserID)),
+			householdmember.HasHouseholdWith(household.ID(input.HouseholdID)),
 		).
 		First(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("user has no household membership")
-	}
-	householdID, err := member.QueryHousehold().FirstID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("resolving household: %w", err)
+		return nil, fmt.Errorf("user is not a member of this household")
 	}
 
 	// Resolve asset account.
@@ -220,7 +214,7 @@ func (r *mutationResolver) AddIncome(ctx context.Context, input model.AddIncomeI
 	} else {
 		assetAcctID, err = r.Client.Account.Query().
 			Where(
-				account.HasHouseholdWith(household.ID(householdID)),
+				account.HasHouseholdWith(household.ID(input.HouseholdID)),
 				account.TypeEQ(account.TypeAsset),
 			).
 			FirstID(ctx)
@@ -232,7 +226,7 @@ func (r *mutationResolver) AddIncome(ctx context.Context, input model.AddIncomeI
 	// Find first income account for this household.
 	incomeAcctID, err := r.Client.Account.Query().
 		Where(
-			account.HasHouseholdWith(household.ID(householdID)),
+			account.HasHouseholdWith(household.ID(input.HouseholdID)),
 			account.TypeEQ(account.TypeIncome),
 		).
 		FirstID(ctx)
@@ -241,7 +235,7 @@ func (r *mutationResolver) AddIncome(ctx context.Context, input model.AddIncomeI
 	}
 
 	return r.TxnSvc.AddIncome(ctx, service.AddIncomeInput{
-		HouseholdID:  householdID,
+		HouseholdID:  input.HouseholdID,
 		UserID:       uc.UserID,
 		AmountCents:  int64(input.Amount),
 		CategoryID:   input.CategoryID,
