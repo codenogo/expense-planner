@@ -1,0 +1,13 @@
+extend type Mutation {
+  """Create an invite code for a household. Only owners can create invite codes."""
+  createInviteCode(householdID: ID!): InviteCode!
+
+  """Join a household using an invite code."""
+  joinHousehold(code: String!): HouseholdMember!
+
+  """Remove a member from a household. Only owners can remove members."""
+  removeMember(householdID: ID!, userID: ID!): Boolean!
+
+  """Update a member's role in a household. Only owners can update roles."""
+  updateMemberRole(householdID: ID!, userID: ID!, role: HouseholdMemberRole!): HouseholdMember!
+}

@@ -121,6 +121,7 @@ type ComplexityRoot struct {
 		Categories     func(childComplexity int) int
 		CreatedAt      func(childComplexity int) int
 		ID             func(childComplexity int) int
+		InviteCodes    func(childComplexity int) int
 		Members        func(childComplexity int) int
 		Name           func(childComplexity int) int
 		RecurringBills func(childComplexity int) int
@@ -150,6 +151,16 @@ type ComplexityRoot struct {
 		TotalImported     func(childComplexity int) int
 	}
 
+	InviteCode struct {
+		Code      func(childComplexity int) int
+		CreatedAt func(childComplexity int) int
+		CreatedBy func(childComplexity int) int
+		ExpiresAt func(childComplexity int) int
+		Household func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Used      func(childComplexity int) int
+	}
+
 	MonthSummary struct {
 		ExpenseCents func(childComplexity int) int
 		IncomeCents  func(childComplexity int) int
@@ -162,10 +173,14 @@ type ComplexityRoot struct {
 		AddIncome        func(childComplexity int, input model.AddIncomeInput) int
 		CommitCSVImport  func(childComplexity int, householdID int, rows []*model.ImportRowInput) int
 		CreateHousehold  func(childComplexity int, input ent.CreateHouseholdInput) int
+		CreateInviteCode func(childComplexity int, householdID int) int
+		JoinHousehold    func(childComplexity int, code string) int
 		Login            func(childComplexity int, input model.LoginInput) int
 		PreviewCSVImport func(childComplexity int, csvContent string, mapping model.ColumnMappingInput, householdID int) int
 		RefreshToken     func(childComplexity int, token string) int
 		Register         func(childComplexity int, input model.RegisterInput) int
+		RemoveMember     func(childComplexity int, householdID int, userID int) int
+		UpdateMemberRole func(childComplexity int, householdID int, userID int, role householdmember.Role) int
 	}
 
 	PageInfo struct {
@@ -188,6 +203,7 @@ type ComplexityRoot struct {
 		Health             func(childComplexity int) int
 		HouseholdMembers   func(childComplexity int) int
 		Households         func(childComplexity int) int
+		InviteCodes        func(childComplexity int) int
 		MonthlyTrend       func(childComplexity int, householdID int, months int) int
 		Node               func(childComplexity int, id int) int
 		Nodes              func(childComplexity int, ids []int) int
@@ -243,6 +259,7 @@ type ComplexityRoot struct {
 		CreatedAt    func(childComplexity int) int
 		Email        func(childComplexity int) int
 		ID           func(childComplexity int) int
+		InviteCodes  func(childComplexity int) int
 		Members      func(childComplexity int) int
 		Name         func(childComplexity int) int
 		Transactions func(childComplexity int) int
@@ -259,6 +276,10 @@ type MutationResolver interface {
 	AddIncome(ctx context.Context, input model.AddIncomeInput) (*ent.Transaction, error)
 	PreviewCSVImport(ctx context.Context, csvContent string, mapping model.ColumnMappingInput, householdID int) ([]*model.ImportPreviewRow, error)
 	CommitCSVImport(ctx context.Context, householdID int, rows []*model.ImportRowInput) (*model.ImportSummary, error)
+	CreateInviteCode(ctx context.Context, householdID int) (*ent.InviteCode, error)
+	JoinHousehold(ctx context.Context, code string) (*ent.HouseholdMember, error)
+	RemoveMember(ctx context.Context, householdID int, userID int) (bool, error)
+	UpdateMemberRole(ctx context.Context, householdID int, userID int, role householdmember.Role) (*ent.HouseholdMember, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
@@ -268,6 +289,7 @@ type QueryResolver interface {
 	Categories(ctx context.Context) ([]*ent.Category, error)
 	Households(ctx context.Context) ([]*ent.Household, error)
 	HouseholdMembers(ctx context.Context) ([]*ent.HouseholdMember, error)
+	InviteCodes(ctx context.Context) ([]*ent.InviteCode, error)
 	RecurringBills(ctx context.Context) ([]*ent.RecurringBill, error)
 	Tags(ctx context.Context) ([]*ent.Tag, error)
 	Transactions(ctx context.Context) ([]*ent.Transaction, error)
@@ -620,6 +642,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Household.ID(childComplexity), true
+	case "Household.inviteCodes":
+		if e.ComplexityRoot.Household.InviteCodes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Household.InviteCodes(childComplexity), true
 	case "Household.members":
 		if e.ComplexityRoot.Household.Members == nil {
 			break
@@ -732,6 +760,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ImportSummary.TotalImported(childComplexity), true
 
+	case "InviteCode.code":
+		if e.ComplexityRoot.InviteCode.Code == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.Code(childComplexity), true
+	case "InviteCode.createdAt":
+		if e.ComplexityRoot.InviteCode.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.CreatedAt(childComplexity), true
+	case "InviteCode.createdBy":
+		if e.ComplexityRoot.InviteCode.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.CreatedBy(childComplexity), true
+	case "InviteCode.expiresAt":
+		if e.ComplexityRoot.InviteCode.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.ExpiresAt(childComplexity), true
+	case "InviteCode.household":
+		if e.ComplexityRoot.InviteCode.Household == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.Household(childComplexity), true
+	case "InviteCode.id":
+		if e.ComplexityRoot.InviteCode.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.ID(childComplexity), true
+	case "InviteCode.used":
+		if e.ComplexityRoot.InviteCode.Used == nil {
+			break
+		}
+
+		return e.ComplexityRoot.InviteCode.Used(childComplexity), true
+
 	case "MonthSummary.expenseCents":
 		if e.ComplexityRoot.MonthSummary.ExpenseCents == nil {
 			break
@@ -801,6 +872,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateHousehold(childComplexity, args["input"].(ent.CreateHouseholdInput)), true
+	case "Mutation.createInviteCode":
+		if e.ComplexityRoot.Mutation.CreateInviteCode == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createInviteCode_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateInviteCode(childComplexity, args["householdID"].(int)), true
+	case "Mutation.joinHousehold":
+		if e.ComplexityRoot.Mutation.JoinHousehold == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_joinHousehold_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.JoinHousehold(childComplexity, args["code"].(string)), true
 	case "Mutation.login":
 		if e.ComplexityRoot.Mutation.Login == nil {
 			break
@@ -845,6 +938,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Register(childComplexity, args["input"].(model.RegisterInput)), true
+	case "Mutation.removeMember":
+		if e.ComplexityRoot.Mutation.RemoveMember == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeMember_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveMember(childComplexity, args["householdID"].(int), args["userID"].(int)), true
+	case "Mutation.updateMemberRole":
+		if e.ComplexityRoot.Mutation.UpdateMemberRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMemberRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMemberRole(childComplexity, args["householdID"].(int), args["userID"].(int), args["role"].(householdmember.Role)), true
 
 	case "PageInfo.endCursor":
 		if e.ComplexityRoot.PageInfo.EndCursor == nil {
@@ -932,6 +1047,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.Households(childComplexity), true
 
+	case "Query.inviteCodes":
+		if e.ComplexityRoot.Query.InviteCodes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.InviteCodes(childComplexity), true
 	case "Query.monthlyTrend":
 		if e.ComplexityRoot.Query.MonthlyTrend == nil {
 			break
@@ -1197,6 +1318,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.User.ID(childComplexity), true
+	case "User.inviteCodes":
+		if e.ComplexityRoot.User.InviteCodes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.InviteCodes(childComplexity), true
 	case "User.members":
 		if e.ComplexityRoot.User.Members == nil {
 			break
@@ -1238,6 +1365,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateCategoryInput,
 		ec.unmarshalInputCreateHouseholdInput,
 		ec.unmarshalInputCreateHouseholdMemberInput,
+		ec.unmarshalInputCreateInviteCodeInput,
 		ec.unmarshalInputCreateRecurringBillInput,
 		ec.unmarshalInputCreateTagInput,
 		ec.unmarshalInputCreateTransactionInput,
@@ -1328,7 +1456,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "import.graphqls" "report.graphqls" "schema.graphqls"
+//go:embed "import.graphqls" "member.graphqls" "report.graphqls" "schema.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1341,6 +1469,7 @@ func sourceData(filename string) string {
 
 var sources = []*ast.Source{
 	{Name: "import.graphqls", Input: sourceData("import.graphqls"), BuiltIn: false},
+	{Name: "member.graphqls", Input: sourceData("member.graphqls"), BuiltIn: false},
 	{Name: "report.graphqls", Input: sourceData("report.graphqls"), BuiltIn: false},
 	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
 	{Name: "../ent.graphql", Input: `directive @goField(forceResolver: Boolean, name: String, omittable: Boolean) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
@@ -1452,6 +1581,7 @@ input CreateHouseholdInput {
   budgetIDs: [ID!]
   tagIDs: [ID!]
   recurringBillIDs: [ID!]
+  inviteCodeIDs: [ID!]
 }
 """
 CreateHouseholdMemberInput is used for create HouseholdMember object.
@@ -1462,6 +1592,18 @@ input CreateHouseholdMemberInput {
   joinedAt: Time
   householdID: ID!
   userID: ID!
+}
+"""
+CreateInviteCodeInput is used for create InviteCode object.
+Input was generated by ent.
+"""
+input CreateInviteCodeInput {
+  code: String!
+  expiresAt: Time!
+  used: Boolean
+  createdAt: Time
+  householdID: ID!
+  createdByID: ID!
 }
 """
 CreateRecurringBillInput is used for create RecurringBill object.
@@ -1516,6 +1658,7 @@ input CreateUserInput {
   updatedAt: Time
   memberIDs: [ID!]
   transactionIDs: [ID!]
+  inviteCodeIDs: [ID!]
 }
 """
 Define a Relay Cursor type:
@@ -1534,6 +1677,7 @@ type Household implements Node {
   budgets: [Budget!]
   tags: [Tag!]
   recurringBills: [RecurringBill!]
+  inviteCodes: [InviteCode!]
 }
 type HouseholdMember implements Node {
   id: ID!
@@ -1548,6 +1692,15 @@ HouseholdMemberRole is enum for the field role
 enum HouseholdMemberRole @goModel(model: "github.com/expenser/expense-planner/ent/householdmember.Role") {
   owner
   member
+}
+type InviteCode implements Node {
+  id: ID!
+  code: String!
+  expiresAt: Time!
+  used: Boolean!
+  createdAt: Time!
+  household: Household!
+  createdBy: User!
 }
 """
 An object with an ID.
@@ -1621,6 +1774,7 @@ type Query {
   categories: [Category!]!
   households: [Household!]!
   householdMembers: [HouseholdMember!]!
+  inviteCodes: [InviteCode!]!
   recurringBills: [RecurringBill!]!
   tags: [Tag!]!
   transactions: [Transaction!]!
@@ -1774,6 +1928,9 @@ input UpdateHouseholdInput {
   addRecurringBillIDs: [ID!]
   removeRecurringBillIDs: [ID!]
   clearRecurringBills: Boolean
+  addInviteCodeIDs: [ID!]
+  removeInviteCodeIDs: [ID!]
+  clearInviteCodes: Boolean
 }
 """
 UpdateHouseholdMemberInput is used for update HouseholdMember object.
@@ -1847,6 +2004,9 @@ input UpdateUserInput {
   addTransactionIDs: [ID!]
   removeTransactionIDs: [ID!]
   clearTransactions: Boolean
+  addInviteCodeIDs: [ID!]
+  removeInviteCodeIDs: [ID!]
+  clearInviteCodes: Boolean
 }
 type User implements Node {
   id: ID!
@@ -1856,6 +2016,7 @@ type User implements Node {
   updatedAt: Time!
   members: [HouseholdMember!]
   transactions: [Transaction!]
+  inviteCodes: [InviteCode!]
 }
 `, BuiltIn: false},
 }
@@ -1914,6 +2075,28 @@ func (ec *executionContext) field_Mutation_createHousehold_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createInviteCode_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_joinHousehold_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "code", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["code"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1965,6 +2148,43 @@ func (ec *executionContext) field_Mutation_register_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeMember_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "userID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["userID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMemberRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "userID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["userID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "role", ec.unmarshalNHouseholdMemberRole2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚋhouseholdmemberᚐRole)
+	if err != nil {
+		return nil, err
+	}
+	args["role"] = arg2
 	return args, nil
 }
 
@@ -2292,6 +2512,8 @@ func (ec *executionContext) fieldContext_Account_household(_ context.Context, fi
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -2434,6 +2656,8 @@ func (ec *executionContext) fieldContext_AuthPayload_user(_ context.Context, fie
 				return ec.fieldContext_User_members(ctx, field)
 			case "transactions":
 				return ec.fieldContext_User_transactions(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_User_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -2706,6 +2930,8 @@ func (ec *executionContext) fieldContext_Budget_household(_ context.Context, fie
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -2988,6 +3214,8 @@ func (ec *executionContext) fieldContext_Category_household(_ context.Context, f
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -4175,6 +4403,51 @@ func (ec *executionContext) fieldContext_Household_recurringBills(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Household_inviteCodes(ctx context.Context, field graphql.CollectedField, obj *ent.Household) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Household_inviteCodes,
+		func(ctx context.Context) (any, error) {
+			return obj.InviteCodes(ctx)
+		},
+		nil,
+		ec.marshalOInviteCode2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCodeᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Household_inviteCodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Household",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_InviteCode_id(ctx, field)
+			case "code":
+				return ec.fieldContext_InviteCode_code(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_InviteCode_expiresAt(ctx, field)
+			case "used":
+				return ec.fieldContext_InviteCode_used(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_InviteCode_createdAt(ctx, field)
+			case "household":
+				return ec.fieldContext_InviteCode_household(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_InviteCode_createdBy(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InviteCode", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _HouseholdMember_id(ctx context.Context, field graphql.CollectedField, obj *ent.HouseholdMember) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4308,6 +4581,8 @@ func (ec *executionContext) fieldContext_HouseholdMember_household(_ context.Con
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -4353,6 +4628,8 @@ func (ec *executionContext) fieldContext_HouseholdMember_user(_ context.Context,
 				return ec.fieldContext_User_members(ctx, field)
 			case "transactions":
 				return ec.fieldContext_User_transactions(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_User_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -4587,6 +4864,253 @@ func (ec *executionContext) fieldContext_ImportSummary_totalAmountCents(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_id(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_code(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_code,
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_expiresAt(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_used(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_used,
+		func(ctx context.Context) (any, error) {
+			return obj.Used, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_used(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_createdAt(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_household(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_household,
+		func(ctx context.Context) (any, error) {
+			return obj.Household(ctx)
+		},
+		nil,
+		ec.marshalNHousehold2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐHousehold,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_household(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Household_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Household_name(ctx, field)
+			case "baseCurrency":
+				return ec.fieldContext_Household_baseCurrency(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Household_createdAt(ctx, field)
+			case "members":
+				return ec.fieldContext_Household_members(ctx, field)
+			case "accounts":
+				return ec.fieldContext_Household_accounts(ctx, field)
+			case "categories":
+				return ec.fieldContext_Household_categories(ctx, field)
+			case "transactions":
+				return ec.fieldContext_Household_transactions(ctx, field)
+			case "budgets":
+				return ec.fieldContext_Household_budgets(ctx, field)
+			case "tags":
+				return ec.fieldContext_Household_tags(ctx, field)
+			case "recurringBills":
+				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _InviteCode_createdBy(ctx context.Context, field graphql.CollectedField, obj *ent.InviteCode) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_InviteCode_createdBy,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy(ctx)
+		},
+		nil,
+		ec.marshalNUser2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_InviteCode_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "InviteCode",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "members":
+				return ec.fieldContext_User_members(ctx, field)
+			case "transactions":
+				return ec.fieldContext_User_transactions(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_User_inviteCodes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -4902,6 +5426,8 @@ func (ec *executionContext) fieldContext_Mutation_createHousehold(ctx context.Co
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -5142,6 +5668,210 @@ func (ec *executionContext) fieldContext_Mutation_commitCSVImport(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_commitCSVImport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createInviteCode(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createInviteCode,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateInviteCode(ctx, fc.Args["householdID"].(int))
+		},
+		nil,
+		ec.marshalNInviteCode2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createInviteCode(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_InviteCode_id(ctx, field)
+			case "code":
+				return ec.fieldContext_InviteCode_code(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_InviteCode_expiresAt(ctx, field)
+			case "used":
+				return ec.fieldContext_InviteCode_used(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_InviteCode_createdAt(ctx, field)
+			case "household":
+				return ec.fieldContext_InviteCode_household(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_InviteCode_createdBy(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InviteCode", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createInviteCode_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_joinHousehold(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_joinHousehold,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().JoinHousehold(ctx, fc.Args["code"].(string))
+		},
+		nil,
+		ec.marshalNHouseholdMember2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐHouseholdMember,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_joinHousehold(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HouseholdMember_id(ctx, field)
+			case "role":
+				return ec.fieldContext_HouseholdMember_role(ctx, field)
+			case "joinedAt":
+				return ec.fieldContext_HouseholdMember_joinedAt(ctx, field)
+			case "household":
+				return ec.fieldContext_HouseholdMember_household(ctx, field)
+			case "user":
+				return ec.fieldContext_HouseholdMember_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HouseholdMember", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_joinHousehold_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeMember(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_removeMember,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveMember(ctx, fc.Args["householdID"].(int), fc.Args["userID"].(int))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeMember(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeMember_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateMemberRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateMemberRole,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMemberRole(ctx, fc.Args["householdID"].(int), fc.Args["userID"].(int), fc.Args["role"].(householdmember.Role))
+		},
+		nil,
+		ec.marshalNHouseholdMember2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐHouseholdMember,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateMemberRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HouseholdMember_id(ctx, field)
+			case "role":
+				return ec.fieldContext_HouseholdMember_role(ctx, field)
+			case "joinedAt":
+				return ec.fieldContext_HouseholdMember_joinedAt(ctx, field)
+			case "household":
+				return ec.fieldContext_HouseholdMember_household(ctx, field)
+			case "user":
+				return ec.fieldContext_HouseholdMember_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HouseholdMember", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMemberRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5564,6 +6294,8 @@ func (ec *executionContext) fieldContext_Query_households(_ context.Context, fie
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -5607,6 +6339,51 @@ func (ec *executionContext) fieldContext_Query_householdMembers(_ context.Contex
 				return ec.fieldContext_HouseholdMember_user(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type HouseholdMember", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_inviteCodes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_inviteCodes,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().InviteCodes(ctx)
+		},
+		nil,
+		ec.marshalNInviteCode2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCodeᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_inviteCodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_InviteCode_id(ctx, field)
+			case "code":
+				return ec.fieldContext_InviteCode_code(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_InviteCode_expiresAt(ctx, field)
+			case "used":
+				return ec.fieldContext_InviteCode_used(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_InviteCode_createdAt(ctx, field)
+			case "household":
+				return ec.fieldContext_InviteCode_household(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_InviteCode_createdBy(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InviteCode", field.Name)
 		},
 	}
 	return fc, nil
@@ -5830,6 +6607,8 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_members(ctx, field)
 			case "transactions":
 				return ec.fieldContext_User_transactions(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_User_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -6415,6 +7194,8 @@ func (ec *executionContext) fieldContext_RecurringBill_household(_ context.Conte
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -6610,6 +7391,8 @@ func (ec *executionContext) fieldContext_Tag_household(_ context.Context, field 
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -6859,6 +7642,8 @@ func (ec *executionContext) fieldContext_Transaction_household(_ context.Context
 				return ec.fieldContext_Household_tags(ctx, field)
 			case "recurringBills":
 				return ec.fieldContext_Household_recurringBills(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_Household_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Household", field.Name)
 		},
@@ -6904,6 +7689,8 @@ func (ec *executionContext) fieldContext_Transaction_createdBy(_ context.Context
 				return ec.fieldContext_User_members(ctx, field)
 			case "transactions":
 				return ec.fieldContext_User_transactions(ctx, field)
+			case "inviteCodes":
+				return ec.fieldContext_User_inviteCodes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -7432,6 +8219,51 @@ func (ec *executionContext) fieldContext_User_transactions(_ context.Context, fi
 				return ec.fieldContext_Transaction_tags(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_inviteCodes(ctx context.Context, field graphql.CollectedField, obj *ent.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_inviteCodes,
+		func(ctx context.Context) (any, error) {
+			return obj.InviteCodes(ctx)
+		},
+		nil,
+		ec.marshalOInviteCode2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCodeᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_inviteCodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_InviteCode_id(ctx, field)
+			case "code":
+				return ec.fieldContext_InviteCode_code(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_InviteCode_expiresAt(ctx, field)
+			case "used":
+				return ec.fieldContext_InviteCode_used(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_InviteCode_createdAt(ctx, field)
+			case "household":
+				return ec.fieldContext_InviteCode_household(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_InviteCode_createdBy(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type InviteCode", field.Name)
 		},
 	}
 	return fc, nil
@@ -9291,7 +10123,7 @@ func (ec *executionContext) unmarshalInputCreateHouseholdInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "baseCurrency", "createdAt", "memberIDs", "accountIDs", "categoryIDs", "transactionIDs", "budgetIDs", "tagIDs", "recurringBillIDs"}
+	fieldsInOrder := [...]string{"name", "baseCurrency", "createdAt", "memberIDs", "accountIDs", "categoryIDs", "transactionIDs", "budgetIDs", "tagIDs", "recurringBillIDs", "inviteCodeIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -9368,6 +10200,13 @@ func (ec *executionContext) unmarshalInputCreateHouseholdInput(ctx context.Conte
 				return it, err
 			}
 			it.RecurringBillIDs = data
+		case "inviteCodeIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inviteCodeIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InviteCodeIDs = data
 		}
 	}
 	return it, nil
@@ -9415,6 +10254,67 @@ func (ec *executionContext) unmarshalInputCreateHouseholdMemberInput(ctx context
 				return it, err
 			}
 			it.UserID = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateInviteCodeInput(ctx context.Context, obj any) (ent.CreateInviteCodeInput, error) {
+	var it ent.CreateInviteCodeInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"code", "expiresAt", "used", "createdAt", "householdID", "createdByID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "code":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("code"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Code = data
+		case "expiresAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expiresAt"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExpiresAt = data
+		case "used":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("used"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Used = data
+		case "createdAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedAt = data
+		case "householdID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("householdID"))
+			data, err := ec.unmarshalNID2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HouseholdID = data
+		case "createdByID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdByID"))
+			data, err := ec.unmarshalNID2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreatedByID = data
 		}
 	}
 	return it, nil
@@ -9631,7 +10531,7 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email", "createdAt", "updatedAt", "memberIDs", "transactionIDs"}
+	fieldsInOrder := [...]string{"name", "email", "createdAt", "updatedAt", "memberIDs", "transactionIDs", "inviteCodeIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -9680,6 +10580,13 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.TransactionIDs = data
+		case "inviteCodeIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("inviteCodeIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InviteCodeIDs = data
 		}
 	}
 	return it, nil
@@ -10100,7 +11007,7 @@ func (ec *executionContext) unmarshalInputUpdateHouseholdInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "baseCurrency", "addMemberIDs", "removeMemberIDs", "clearMembers", "addAccountIDs", "removeAccountIDs", "clearAccounts", "addCategoryIDs", "removeCategoryIDs", "clearCategories", "addTransactionIDs", "removeTransactionIDs", "clearTransactions", "addBudgetIDs", "removeBudgetIDs", "clearBudgets", "addTagIDs", "removeTagIDs", "clearTags", "addRecurringBillIDs", "removeRecurringBillIDs", "clearRecurringBills"}
+	fieldsInOrder := [...]string{"name", "baseCurrency", "addMemberIDs", "removeMemberIDs", "clearMembers", "addAccountIDs", "removeAccountIDs", "clearAccounts", "addCategoryIDs", "removeCategoryIDs", "clearCategories", "addTransactionIDs", "removeTransactionIDs", "clearTransactions", "addBudgetIDs", "removeBudgetIDs", "clearBudgets", "addTagIDs", "removeTagIDs", "clearTags", "addRecurringBillIDs", "removeRecurringBillIDs", "clearRecurringBills", "addInviteCodeIDs", "removeInviteCodeIDs", "clearInviteCodes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10268,6 +11175,27 @@ func (ec *executionContext) unmarshalInputUpdateHouseholdInput(ctx context.Conte
 				return it, err
 			}
 			it.ClearRecurringBills = data
+		case "addInviteCodeIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addInviteCodeIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AddInviteCodeIDs = data
+		case "removeInviteCodeIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removeInviteCodeIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RemoveInviteCodeIDs = data
+		case "clearInviteCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearInviteCodes"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearInviteCodes = data
 		}
 	}
 	return it, nil
@@ -10573,7 +11501,7 @@ func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email", "updatedAt", "addMemberIDs", "removeMemberIDs", "clearMembers", "addTransactionIDs", "removeTransactionIDs", "clearTransactions"}
+	fieldsInOrder := [...]string{"name", "email", "updatedAt", "addMemberIDs", "removeMemberIDs", "clearMembers", "addTransactionIDs", "removeTransactionIDs", "clearTransactions", "addInviteCodeIDs", "removeInviteCodeIDs", "clearInviteCodes"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10643,6 +11571,27 @@ func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.ClearTransactions = data
+		case "addInviteCodeIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addInviteCodeIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AddInviteCodeIDs = data
+		case "removeInviteCodeIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removeInviteCodeIDs"))
+			data, err := ec.unmarshalOID2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RemoveInviteCodeIDs = data
+		case "clearInviteCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clearInviteCodes"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClearInviteCodes = data
 		}
 	}
 	return it, nil
@@ -10686,6 +11635,11 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Placeholder(ctx, sel, obj)
+	case *ent.InviteCode:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._InviteCode(ctx, sel, obj)
 	case *ent.HouseholdMember:
 		if obj == nil {
 			return graphql.Null
@@ -11770,6 +12724,39 @@ func (ec *executionContext) _Household(ctx context.Context, sel ast.SelectionSet
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "inviteCodes":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Household_inviteCodes(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12019,6 +13006,137 @@ func (ec *executionContext) _ImportSummary(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var inviteCodeImplementors = []string{"InviteCode", "Node"}
+
+func (ec *executionContext) _InviteCode(ctx context.Context, sel ast.SelectionSet, obj *ent.InviteCode) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, inviteCodeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("InviteCode")
+		case "id":
+			out.Values[i] = ec._InviteCode_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "code":
+			out.Values[i] = ec._InviteCode_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "expiresAt":
+			out.Values[i] = ec._InviteCode_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "used":
+			out.Values[i] = ec._InviteCode_used(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdAt":
+			out.Values[i] = ec._InviteCode_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "household":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._InviteCode_household(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "createdBy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._InviteCode_createdBy(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var monthSummaryImplementors = []string{"MonthSummary"}
 
 func (ec *executionContext) _MonthSummary(ctx context.Context, sel ast.SelectionSet, obj *model.MonthSummary) graphql.Marshaler {
@@ -12144,6 +13262,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "commitCSVImport":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_commitCSVImport(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createInviteCode":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createInviteCode(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "joinHousehold":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_joinHousehold(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeMember":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeMember(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateMemberRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMemberRole(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -12416,6 +13562,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_householdMembers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "inviteCodes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_inviteCodes(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -13380,6 +14548,39 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "inviteCodes":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_inviteCodes(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -13998,6 +15199,10 @@ func (ec *executionContext) marshalNHousehold2ᚖgithubᚗcomᚋexpenserᚋexpen
 	return ec._Household(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHouseholdMember2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐHouseholdMember(ctx context.Context, sel ast.SelectionSet, v ent.HouseholdMember) graphql.Marshaler {
+	return ec._HouseholdMember(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNHouseholdMember2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐHouseholdMemberᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.HouseholdMember) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -14170,6 +15375,36 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNInviteCode2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCode(ctx context.Context, sel ast.SelectionSet, v ent.InviteCode) graphql.Marshaler {
+	return ec._InviteCode(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNInviteCode2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCodeᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.InviteCode) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInviteCode2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCode(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNInviteCode2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCode(ctx context.Context, sel ast.SelectionSet, v *ent.InviteCode) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._InviteCode(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNLoginInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐLoginInput(ctx context.Context, v any) (model.LoginInput, error) {
@@ -14804,6 +16039,25 @@ func (ec *executionContext) marshalOInt2ᚖint64(ctx context.Context, sel ast.Se
 	_ = ctx
 	res := graphql.MarshalInt64(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOInviteCode2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCodeᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.InviteCode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNInviteCode2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐInviteCode(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalONode2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v ent.Noder) graphql.Marshaler {

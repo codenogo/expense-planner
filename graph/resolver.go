@@ -13,11 +13,12 @@ import (
 
 // Resolver is the root resolver for GraphQL queries.
 type Resolver struct {
-	Client    *ent.Client
-	JWT       *service.JWTService
-	TxnSvc   *service.TransactionService
-	ImportSvc *service.ImportService
-	ReportSvc *service.ReportService
+	Client       *ent.Client
+	JWT          *service.JWTService
+	TxnSvc       *service.TransactionService
+	ImportSvc    *service.ImportService
+	ReportSvc    *service.ReportService
+	HouseholdSvc *service.HouseholdService
 }
 
 func intPtr(i int) *int {
