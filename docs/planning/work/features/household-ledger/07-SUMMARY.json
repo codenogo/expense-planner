@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "feature": "household-ledger",
+  "planNumber": "07",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create spending-by-category aggregation query",
+      "files": [
+        "internal/service/reports.go",
+        "internal/service/reports_test.go"
+      ],
+      "description": "Created ReportService with SpendingByCategory method. Fetches expense entries with WithTransaction+WithCategory, aggregates by category, calculates percentages, sorts descending by total. Two tests: multi-category with equal spending and no-expenses case."
+    },
+    {
+      "task": "Create income vs expense monthly trend query",
+      "files": [
+        "internal/service/reports.go",
+        "internal/service/reports_test.go"
+      ],
+      "description": "Added MonthlyTrend method to ReportService. Initializes all month slots with zeros, fetches entries with WithTransaction+WithAccount, aggregates income (negative amounts on income accounts) and expenses (positive amounts on expense accounts), calculates net per month. Test covers 3-month range with mixed data and zero-data month."
+    },
+    {
+      "task": "Create dashboard summary query and wire all reports to GraphQL",
+      "files": [
+        "internal/service/reports.go",
+        "graph/report.graphqls",
+        "graph/report.resolvers.go",
+        "graph/resolver.go",
+        "graph/generated.go",
+        "graph/model/models_gen.go",
+        "cmd/expense-planner/main.go"
+      ],
+      "description": "Added GetDashboardSummary: total asset balance, current-month income/spending via MonthlyTrend, safe-to-spend (balance minus remaining budget), last 10 transactions. Created report.graphqls with DashboardSummary, CategorySpend, MonthSummary types and three queries. Implemented resolvers calling ReportService. Wired ReportService into Resolver and main.go."
+    }
+  ],
+  "verification": [
+    {"command": "go build ./...", "result": "pass"},
+    {"command": "go vet ./...", "result": "pass"},
+    {"command": "go test -count=1 ./...", "result": "pass (22 tests)"}
+  ],
+  "commit": "da53ad6",
+  "timestamp": "2026-03-02T00:00:00Z"
+}

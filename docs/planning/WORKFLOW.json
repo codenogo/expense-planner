@@ -63,7 +63,18 @@
     "scanScope": "changed",
     "todoRequiresTicket": true
   },
-  "packages": [],
+  "packages": [
+    {
+      "commands": {
+        "format": "gofmt -w .",
+        "lint": "go vet ./...",
+        "test": "go test ./... -short"
+      },
+      "kind": "go",
+      "name": "expense_planner",
+      "path": "."
+    }
+  ],
   "performance": {
     "bootstrapContext": {
       "commandSetWordMax": 7000,

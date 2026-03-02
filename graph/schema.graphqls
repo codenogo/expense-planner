@@ -45,6 +45,8 @@ type AuthPayload {
 input AddExpenseInput {
   """Amount in cents (e.g., 50000 = KES 500)."""
   amount: Int!
+  """Household to record expense in."""
+  householdID: ID!
   categoryID: ID!
   description: String!
   date: Time!
@@ -55,6 +57,8 @@ input AddExpenseInput {
 input AddIncomeInput {
   """Amount in cents (e.g., 100000 = KES 1000)."""
   amount: Int!
+  """Household to record income in."""
+  householdID: ID!
   categoryID: ID!
   description: String!
   date: Time!
