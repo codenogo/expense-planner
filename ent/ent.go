@@ -17,6 +17,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/placeholder"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/tag"
@@ -88,6 +89,7 @@ func checkColumn(t, c string) error {
 			category.Table:         category.ValidColumn,
 			household.Table:        household.ValidColumn,
 			householdmember.Table:  householdmember.ValidColumn,
+			invitecode.Table:       invitecode.ValidColumn,
 			placeholder.Table:      placeholder.ValidColumn,
 			recurringbill.Table:    recurringbill.ValidColumn,
 			tag.Table:              tag.ValidColumn,

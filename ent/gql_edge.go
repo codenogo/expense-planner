@@ -192,6 +192,18 @@ func (_m *Household) RecurringBills(ctx context.Context) (result []*RecurringBil
 	return result, err
 }
 
+func (_m *Household) InviteCodes(ctx context.Context) (result []*InviteCode, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedInviteCodes(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.InviteCodesOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryInviteCodes().All(ctx)
+	}
+	return result, err
+}
+
 func (_m *HouseholdMember) Household(ctx context.Context) (*Household, error) {
 	result, err := _m.Edges.HouseholdOrErr()
 	if IsNotLoaded(err) {
@@ -204,6 +216,22 @@ func (_m *HouseholdMember) User(ctx context.Context) (*User, error) {
 	result, err := _m.Edges.UserOrErr()
 	if IsNotLoaded(err) {
 		result, err = _m.QueryUser().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *InviteCode) Household(ctx context.Context) (*Household, error) {
+	result, err := _m.Edges.HouseholdOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryHousehold().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *InviteCode) CreatedBy(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCreatedBy().Only(ctx)
 	}
 	return result, err
 }
@@ -328,6 +356,18 @@ func (_m *User) Transactions(ctx context.Context) (result []*Transaction, err er
 	}
 	if IsNotLoaded(err) {
 		result, err = _m.QueryTransactions().All(ctx)
+	}
+	return result, err
+}
+
+func (_m *User) InviteCodes(ctx context.Context) (result []*InviteCode, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedInviteCodes(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.InviteCodesOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryInviteCodes().All(ctx)
 	}
 	return result, err
 }

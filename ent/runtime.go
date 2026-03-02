@@ -10,6 +10,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/schema"
 	"github.com/expenser/expense-planner/ent/tag"
@@ -85,6 +86,20 @@ func init() {
 	householdmemberDescJoinedAt := householdmemberFields[1].Descriptor()
 	// householdmember.DefaultJoinedAt holds the default value on creation for the joined_at field.
 	householdmember.DefaultJoinedAt = householdmemberDescJoinedAt.Default.(func() time.Time)
+	invitecodeFields := schema.InviteCode{}.Fields()
+	_ = invitecodeFields
+	// invitecodeDescCode is the schema descriptor for code field.
+	invitecodeDescCode := invitecodeFields[0].Descriptor()
+	// invitecode.CodeValidator is a validator for the "code" field. It is called by the builders before save.
+	invitecode.CodeValidator = invitecodeDescCode.Validators[0].(func(string) error)
+	// invitecodeDescUsed is the schema descriptor for used field.
+	invitecodeDescUsed := invitecodeFields[2].Descriptor()
+	// invitecode.DefaultUsed holds the default value on creation for the used field.
+	invitecode.DefaultUsed = invitecodeDescUsed.Default.(bool)
+	// invitecodeDescCreatedAt is the schema descriptor for created_at field.
+	invitecodeDescCreatedAt := invitecodeFields[3].Descriptor()
+	// invitecode.DefaultCreatedAt holds the default value on creation for the created_at field.
+	invitecode.DefaultCreatedAt = invitecodeDescCreatedAt.Default.(func() time.Time)
 	recurringbillFields := schema.RecurringBill{}.Fields()
 	_ = recurringbillFields
 	// recurringbillDescName is the schema descriptor for name field.

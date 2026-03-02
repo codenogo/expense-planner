@@ -39,14 +39,17 @@ type UserEdges struct {
 	Members []*HouseholdMember `json:"members,omitempty"`
 	// Transactions holds the value of the transactions edge.
 	Transactions []*Transaction `json:"transactions,omitempty"`
+	// InviteCodes holds the value of the invite_codes edge.
+	InviteCodes []*InviteCode `json:"invite_codes,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 	// totalCount holds the count of the edges above.
-	totalCount [2]map[string]int
+	totalCount [3]map[string]int
 
 	namedMembers      map[string][]*HouseholdMember
 	namedTransactions map[string][]*Transaction
+	namedInviteCodes  map[string][]*InviteCode
 }
 
 // MembersOrErr returns the Members value or an error if the edge
@@ -65,6 +68,15 @@ func (e UserEdges) TransactionsOrErr() ([]*Transaction, error) {
 		return e.Transactions, nil
 	}
 	return nil, &NotLoadedError{edge: "transactions"}
+}
+
+// InviteCodesOrErr returns the InviteCodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) InviteCodesOrErr() ([]*InviteCode, error) {
+	if e.loadedTypes[2] {
+		return e.InviteCodes, nil
+	}
+	return nil, &NotLoadedError{edge: "invite_codes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -152,6 +164,11 @@ func (_m *User) QueryTransactions() *TransactionQuery {
 	return NewUserClient(_m.config).QueryTransactions(_m)
 }
 
+// QueryInviteCodes queries the "invite_codes" edge of the User entity.
+func (_m *User) QueryInviteCodes() *InviteCodeQuery {
+	return NewUserClient(_m.config).QueryInviteCodes(_m)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -237,6 +254,30 @@ func (_m *User) appendNamedTransactions(name string, edges ...*Transaction) {
 		_m.Edges.namedTransactions[name] = []*Transaction{}
 	} else {
 		_m.Edges.namedTransactions[name] = append(_m.Edges.namedTransactions[name], edges...)
+	}
+}
+
+// NamedInviteCodes returns the InviteCodes named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedInviteCodes(name string) ([]*InviteCode, error) {
+	if _m.Edges.namedInviteCodes == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedInviteCodes[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedInviteCodes(name string, edges ...*InviteCode) {
+	if _m.Edges.namedInviteCodes == nil {
+		_m.Edges.namedInviteCodes = make(map[string][]*InviteCode)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedInviteCodes[name] = []*InviteCode{}
+	} else {
+		_m.Edges.namedInviteCodes[name] = append(_m.Edges.namedInviteCodes[name], edges...)
 	}
 }
 

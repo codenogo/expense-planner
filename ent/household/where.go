@@ -401,6 +401,29 @@ func HasRecurringBillsWith(preds ...predicate.RecurringBill) predicate.Household
 	})
 }
 
+// HasInviteCodes applies the HasEdge predicate on the "invite_codes" edge.
+func HasInviteCodes() predicate.Household {
+	return predicate.Household(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, InviteCodesTable, InviteCodesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasInviteCodesWith applies the HasEdge predicate on the "invite_codes" edge with a given conditions (other predicates).
+func HasInviteCodesWith(preds ...predicate.InviteCode) predicate.Household {
+	return predicate.Household(func(s *sql.Selector) {
+		step := newInviteCodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Household) predicate.Household {
 	return predicate.Household(sql.AndPredicates(predicates...))

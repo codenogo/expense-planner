@@ -22,6 +22,8 @@ type Tx struct {
 	Household *HouseholdClient
 	// HouseholdMember is the client for interacting with the HouseholdMember builders.
 	HouseholdMember *HouseholdMemberClient
+	// InviteCode is the client for interacting with the InviteCode builders.
+	InviteCode *InviteCodeClient
 	// Placeholder is the client for interacting with the Placeholder builders.
 	Placeholder *PlaceholderClient
 	// RecurringBill is the client for interacting with the RecurringBill builders.
@@ -170,6 +172,7 @@ func (tx *Tx) init() {
 	tx.Category = NewCategoryClient(tx.config)
 	tx.Household = NewHouseholdClient(tx.config)
 	tx.HouseholdMember = NewHouseholdMemberClient(tx.config)
+	tx.InviteCode = NewInviteCodeClient(tx.config)
 	tx.Placeholder = NewPlaceholderClient(tx.config)
 	tx.RecurringBill = NewRecurringBillClient(tx.config)
 	tx.Tag = NewTagClient(tx.config)

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
 )
@@ -96,6 +97,21 @@ func (_c *UserCreate) AddTransactions(v ...*Transaction) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTransactionIDs(ids...)
+}
+
+// AddInviteCodeIDs adds the "invite_codes" edge to the InviteCode entity by IDs.
+func (_c *UserCreate) AddInviteCodeIDs(ids ...int) *UserCreate {
+	_c.mutation.AddInviteCodeIDs(ids...)
+	return _c
+}
+
+// AddInviteCodes adds the "invite_codes" edges to the InviteCode entity.
+func (_c *UserCreate) AddInviteCodes(v ...*InviteCode) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInviteCodeIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -241,6 +257,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(transaction.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.InviteCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

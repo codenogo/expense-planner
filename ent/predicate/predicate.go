@@ -21,6 +21,9 @@ type Household func(*sql.Selector)
 // HouseholdMember is the predicate function for householdmember builders.
 type HouseholdMember func(*sql.Selector)
 
+// InviteCode is the predicate function for invitecode builders.
+type InviteCode func(*sql.Selector)
+
 // Placeholder is the predicate function for placeholder builders.
 type Placeholder func(*sql.Selector)
 

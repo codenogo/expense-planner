@@ -327,6 +327,7 @@ type CreateHouseholdInput struct {
 	BudgetIDs        []int
 	TagIDs           []int
 	RecurringBillIDs []int
+	InviteCodeIDs    []int
 }
 
 // Mutate applies the CreateHouseholdInput on the HouseholdMutation builder.
@@ -358,6 +359,9 @@ func (i *CreateHouseholdInput) Mutate(m *HouseholdMutation) {
 	}
 	if v := i.RecurringBillIDs; len(v) > 0 {
 		m.AddRecurringBillIDs(v...)
+	}
+	if v := i.InviteCodeIDs; len(v) > 0 {
+		m.AddInviteCodeIDs(v...)
 	}
 }
 
@@ -392,6 +396,9 @@ type UpdateHouseholdInput struct {
 	ClearRecurringBills    bool
 	AddRecurringBillIDs    []int
 	RemoveRecurringBillIDs []int
+	ClearInviteCodes       bool
+	AddInviteCodeIDs       []int
+	RemoveInviteCodeIDs    []int
 }
 
 // Mutate applies the UpdateHouseholdInput on the HouseholdMutation builder.
@@ -465,6 +472,15 @@ func (i *UpdateHouseholdInput) Mutate(m *HouseholdMutation) {
 	if v := i.RemoveRecurringBillIDs; len(v) > 0 {
 		m.RemoveRecurringBillIDs(v...)
 	}
+	if i.ClearInviteCodes {
+		m.ClearInviteCodes()
+	}
+	if v := i.AddInviteCodeIDs; len(v) > 0 {
+		m.AddInviteCodeIDs(v...)
+	}
+	if v := i.RemoveInviteCodeIDs; len(v) > 0 {
+		m.RemoveInviteCodeIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the UpdateHouseholdInput on the HouseholdUpdate builder.
@@ -533,6 +549,36 @@ func (c *HouseholdMemberUpdate) SetInput(i UpdateHouseholdMemberInput) *Househol
 
 // SetInput applies the change-set in the UpdateHouseholdMemberInput on the HouseholdMemberUpdateOne builder.
 func (c *HouseholdMemberUpdateOne) SetInput(i UpdateHouseholdMemberInput) *HouseholdMemberUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateInviteCodeInput represents a mutation input for creating invitecodes.
+type CreateInviteCodeInput struct {
+	Code        string
+	ExpiresAt   time.Time
+	Used        *bool
+	CreatedAt   *time.Time
+	HouseholdID int
+	CreatedByID int
+}
+
+// Mutate applies the CreateInviteCodeInput on the InviteCodeMutation builder.
+func (i *CreateInviteCodeInput) Mutate(m *InviteCodeMutation) {
+	m.SetCode(i.Code)
+	m.SetExpiresAt(i.ExpiresAt)
+	if v := i.Used; v != nil {
+		m.SetUsed(*v)
+	}
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+	m.SetCreatedByID(i.CreatedByID)
+}
+
+// SetInput applies the change-set in the CreateInviteCodeInput on the InviteCodeCreate builder.
+func (c *InviteCodeCreate) SetInput(i CreateInviteCodeInput) *InviteCodeCreate {
 	i.Mutate(c.Mutation())
 	return c
 }
@@ -823,6 +869,7 @@ type CreateUserInput struct {
 	UpdatedAt      *time.Time
 	MemberIDs      []int
 	TransactionIDs []int
+	InviteCodeIDs  []int
 }
 
 // Mutate applies the CreateUserInput on the UserMutation builder.
@@ -840,6 +887,9 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.TransactionIDs; len(v) > 0 {
 		m.AddTransactionIDs(v...)
+	}
+	if v := i.InviteCodeIDs; len(v) > 0 {
+		m.AddInviteCodeIDs(v...)
 	}
 }
 
@@ -860,6 +910,9 @@ type UpdateUserInput struct {
 	ClearTransactions    bool
 	AddTransactionIDs    []int
 	RemoveTransactionIDs []int
+	ClearInviteCodes     bool
+	AddInviteCodeIDs     []int
+	RemoveInviteCodeIDs  []int
 }
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
@@ -890,6 +943,15 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.RemoveTransactionIDs; len(v) > 0 {
 		m.RemoveTransactionIDs(v...)
+	}
+	if i.ClearInviteCodes {
+		m.ClearInviteCodes()
+	}
+	if v := i.AddInviteCodeIDs; len(v) > 0 {
+		m.AddInviteCodeIDs(v...)
+	}
+	if v := i.RemoveInviteCodeIDs; len(v) > 0 {
+		m.RemoveInviteCodeIDs(v...)
 	}
 }
 

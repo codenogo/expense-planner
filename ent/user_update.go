@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/predicate"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
@@ -108,6 +109,21 @@ func (_u *UserUpdate) AddTransactions(v ...*Transaction) *UserUpdate {
 	return _u.AddTransactionIDs(ids...)
 }
 
+// AddInviteCodeIDs adds the "invite_codes" edge to the InviteCode entity by IDs.
+func (_u *UserUpdate) AddInviteCodeIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddInviteCodeIDs(ids...)
+	return _u
+}
+
+// AddInviteCodes adds the "invite_codes" edges to the InviteCode entity.
+func (_u *UserUpdate) AddInviteCodes(v ...*InviteCode) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInviteCodeIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -153,6 +169,27 @@ func (_u *UserUpdate) RemoveTransactions(v ...*Transaction) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTransactionIDs(ids...)
+}
+
+// ClearInviteCodes clears all "invite_codes" edges to the InviteCode entity.
+func (_u *UserUpdate) ClearInviteCodes() *UserUpdate {
+	_u.mutation.ClearInviteCodes()
+	return _u
+}
+
+// RemoveInviteCodeIDs removes the "invite_codes" edge to InviteCode entities by IDs.
+func (_u *UserUpdate) RemoveInviteCodeIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveInviteCodeIDs(ids...)
+	return _u
+}
+
+// RemoveInviteCodes removes "invite_codes" edges to InviteCode entities.
+func (_u *UserUpdate) RemoveInviteCodes(v ...*InviteCode) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInviteCodeIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -320,6 +357,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInviteCodesIDs(); len(nodes) > 0 && !_u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InviteCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -418,6 +500,21 @@ func (_u *UserUpdateOne) AddTransactions(v ...*Transaction) *UserUpdateOne {
 	return _u.AddTransactionIDs(ids...)
 }
 
+// AddInviteCodeIDs adds the "invite_codes" edge to the InviteCode entity by IDs.
+func (_u *UserUpdateOne) AddInviteCodeIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddInviteCodeIDs(ids...)
+	return _u
+}
+
+// AddInviteCodes adds the "invite_codes" edges to the InviteCode entity.
+func (_u *UserUpdateOne) AddInviteCodes(v ...*InviteCode) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInviteCodeIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -463,6 +560,27 @@ func (_u *UserUpdateOne) RemoveTransactions(v ...*Transaction) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTransactionIDs(ids...)
+}
+
+// ClearInviteCodes clears all "invite_codes" edges to the InviteCode entity.
+func (_u *UserUpdateOne) ClearInviteCodes() *UserUpdateOne {
+	_u.mutation.ClearInviteCodes()
+	return _u
+}
+
+// RemoveInviteCodeIDs removes the "invite_codes" edge to InviteCode entities by IDs.
+func (_u *UserUpdateOne) RemoveInviteCodeIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveInviteCodeIDs(ids...)
+	return _u
+}
+
+// RemoveInviteCodes removes "invite_codes" edges to InviteCode entities.
+func (_u *UserUpdateOne) RemoveInviteCodes(v ...*InviteCode) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInviteCodeIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -653,6 +771,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(transaction.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInviteCodesIDs(); len(nodes) > 0 && !_u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InviteCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.InviteCodesTable,
+			Columns: []string{user.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
