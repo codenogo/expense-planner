@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "feature": "frontend-dashboard",
+  "displayName": "Frontend Dashboard",
+  "decisions": [
+    {
+      "area": "graphql-client",
+      "decision": "Apollo Client",
+      "rationale": "User preference. Mature ecosystem, largest community, excellent DevTools, normalized cache. Heavier than urql (~33KB vs ~12KB) but better tooling and wider adoption."
+    },
+    {
+      "area": "ui-framework",
+      "decision": "shadcn/ui + Tailwind CSS",
+      "rationale": "Copy-paste component model — no runtime dependency, full ownership of code. Radix UI primitives for accessibility. CSS variable-based theming enables dark mode natively. Active community (85K+ GitHub stars)."
+    },
+    {
+      "area": "dark-theme",
+      "decision": "CSS variables via Tailwind",
+      "rationale": "Inherent with shadcn/ui. Tailwind dark: variant + CSS custom properties. Single class toggle on <html> element. No additional library needed."
+    },
+    {
+      "area": "csv-import-ux",
+      "decision": "Step-by-step wizard",
+      "rationale": "Upload → preview first 5 rows → map columns via dropdowns → confirm and import. Guided flow reduces errors and supports non-technical users. Progressive disclosure keeps each step simple."
+    },
+    {
+      "area": "household-invite-flow",
+      "decision": "Invite code (already implemented)",
+      "rationale": "Resolved in plan 08. Crypto-random 8-char hex code with 7-day expiry. Owner generates code, invitee enters code to join. Transactional join with used-flag."
+    },
+    {
+      "area": "budget-rollover",
+      "decision": "Carry forward surplus",
+      "rationale": "Unspent budget rolls into next month. Requires cumulative balance tracking: next_month_budget = base_budget + (prev_budget - prev_spent). Encourages saving and reflects real household behavior."
+    }
+  ],
+  "constraints": [
+    "React 18+ with TypeScript (strict mode)",
+    "Vite for build tooling (fast HMR, ESBuild)",
+    "Apollo Client v3 for GraphQL",
+    "shadcn/ui components (copy-paste, not npm package)",
+    "Tailwind CSS v3+ for styling",
+    "Backend is Go with entgo + gqlgen (GraphQL API at /query)",
+    "Auth via JWT (existing middleware)",
+    "Must support dark/light theme toggle",
+    "CSV import must handle the existing ImportTransactions mutation"
+  ],
+  "openQuestions": [],
+  "relatedCode": [
+    "cmd/expense-planner/main.go",
+    "graph/member.graphqls",
+    "graph/member.resolvers.go",
+    "graph/resolver.go",
+    "graph/generated.go",
+    "graph/ent.resolvers.go",
+    "internal/service/household.go",
+    "internal/service/transaction.go",
+    "internal/service/report.go",
+    "internal/service/import.go",
+    "internal/service/jwt.go"
+  ],
+  "timestamp": "2026-03-02T02:00:00Z"
+}
