@@ -40,9 +40,12 @@ func main() {
 	// Create transaction service.
 	txnSvc := service.NewTransactionService(client)
 
+	// Create import service.
+	importSvc := service.NewImportService(client, txnSvc)
+
 	// Create GraphQL server.
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc, TxnSvc: txnSvc},
+		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc, TxnSvc: txnSvc, ImportSvc: importSvc},
 	}))
 	srv.Use(entgql.Transactioner{TxOpener: client})
 

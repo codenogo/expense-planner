@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "feature": "household-ledger",
+  "planNumber": "05",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create Budget ent schema with monthly tracking",
+      "files": [
+        "ent/schema/budget.go",
+        "ent/schema/household.go",
+        "ent/schema/category.go",
+        "internal/service/budget.go",
+        "internal/service/budget_test.go"
+      ],
+      "description": "Created Budget entity with month (YYYY-MM), amount_cents, and rollover fields. Unique index on (household, category, month). BudgetService.GetBudgetProgress calculates spent amounts by summing expense entries per category per month. 3 tests: progress with expenses, no expenses, invalid month format."
+    },
+    {
+      "task": "Create Tag ent schema with transaction tagging",
+      "files": [
+        "ent/schema/tag.go",
+        "ent/schema/transaction.go",
+        "ent/schema/household.go"
+      ],
+      "description": "Created Tag entity with name, optional color, household scope, and unique index on (household, name). Many-to-many relationship with Transaction via Tag.To('transactions') and Transaction.From('tags')."
+    },
+    {
+      "task": "Create RecurringBill ent schema with status tracking",
+      "files": [
+        "ent/schema/recurring_bill.go",
+        "ent/schema/household.go",
+        "ent/schema/category.go",
+        "internal/service/bills.go"
+      ],
+      "description": "Created RecurringBill entity with name, amount_cents, due_day (1-31), frequency enum (monthly/weekly/annual), and status enum (pending/paid/overdue). BillService.UpdateBillStatuses auto-marks pending bills as overdue when past due day."
+    }
+  ],
+  "verification": [
+    {"command": "go build ./...", "result": "pass"},
+    {"command": "go test ./...", "result": "pass (16 tests)"}
+  ],
+  "commit": "24107a3",
+  "timestamp": "2026-03-02T00:00:00Z"
+}

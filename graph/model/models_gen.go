@@ -34,6 +34,53 @@ type AuthPayload struct {
 	User         *ent.User `json:"user"`
 }
 
+type BankPreset struct {
+	Name     string               `json:"name"`
+	BankCode string               `json:"bankCode"`
+	Mapping  *ColumnMappingOutput `json:"mapping"`
+}
+
+type ColumnMappingInput struct {
+	DateCol        int    `json:"dateCol"`
+	AmountCol      *int   `json:"amountCol,omitempty"`
+	DescriptionCol int    `json:"descriptionCol"`
+	DebitCol       *int   `json:"debitCol,omitempty"`
+	CreditCol      *int   `json:"creditCol,omitempty"`
+	DateFormat     string `json:"dateFormat"`
+	SkipRows       int    `json:"skipRows"`
+}
+
+type ColumnMappingOutput struct {
+	DateCol        int    `json:"dateCol"`
+	AmountCol      *int   `json:"amountCol,omitempty"`
+	DescriptionCol int    `json:"descriptionCol"`
+	DebitCol       *int   `json:"debitCol,omitempty"`
+	CreditCol      *int   `json:"creditCol,omitempty"`
+	DateFormat     string `json:"dateFormat"`
+	SkipRows       int    `json:"skipRows"`
+}
+
+type ImportPreviewRow struct {
+	Date                  time.Time `json:"date"`
+	AmountCents           int       `json:"amountCents"`
+	Description           string    `json:"description"`
+	SuggestedCategoryID   *int      `json:"suggestedCategoryID,omitempty"`
+	SuggestedCategoryName string    `json:"suggestedCategoryName"`
+}
+
+type ImportRowInput struct {
+	Date        time.Time `json:"date"`
+	AmountCents int       `json:"amountCents"`
+	Description string    `json:"description"`
+	CategoryID  int       `json:"categoryID"`
+}
+
+type ImportSummary struct {
+	TotalImported     int `json:"totalImported"`
+	SkippedDuplicates int `json:"skippedDuplicates"`
+	TotalAmountCents  int `json:"totalAmountCents"`
+}
+
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

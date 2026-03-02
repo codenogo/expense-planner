@@ -59,6 +59,12 @@ type ComplexityRoot struct {
 		User         func(childComplexity int) int
 	}
 
+	BankPreset struct {
+		BankCode func(childComplexity int) int
+		Mapping  func(childComplexity int) int
+		Name     func(childComplexity int) int
+	}
+
 	Budget struct {
 		AmountCents func(childComplexity int) int
 		Category    func(childComplexity int) int
@@ -83,6 +89,16 @@ type ComplexityRoot struct {
 		Transactions   func(childComplexity int) int
 	}
 
+	ColumnMappingOutput struct {
+		AmountCol      func(childComplexity int) int
+		CreditCol      func(childComplexity int) int
+		DateCol        func(childComplexity int) int
+		DateFormat     func(childComplexity int) int
+		DebitCol       func(childComplexity int) int
+		DescriptionCol func(childComplexity int) int
+		SkipRows       func(childComplexity int) int
+	}
+
 	Household struct {
 		Accounts       func(childComplexity int) int
 		BaseCurrency   func(childComplexity int) int
@@ -105,13 +121,29 @@ type ComplexityRoot struct {
 		User      func(childComplexity int) int
 	}
 
+	ImportPreviewRow struct {
+		AmountCents           func(childComplexity int) int
+		Date                  func(childComplexity int) int
+		Description           func(childComplexity int) int
+		SuggestedCategoryID   func(childComplexity int) int
+		SuggestedCategoryName func(childComplexity int) int
+	}
+
+	ImportSummary struct {
+		SkippedDuplicates func(childComplexity int) int
+		TotalAmountCents  func(childComplexity int) int
+		TotalImported     func(childComplexity int) int
+	}
+
 	Mutation struct {
-		AddExpense      func(childComplexity int, input model.AddExpenseInput) int
-		AddIncome       func(childComplexity int, input model.AddIncomeInput) int
-		CreateHousehold func(childComplexity int, input ent.CreateHouseholdInput) int
-		Login           func(childComplexity int, input model.LoginInput) int
-		RefreshToken    func(childComplexity int, token string) int
-		Register        func(childComplexity int, input model.RegisterInput) int
+		AddExpense       func(childComplexity int, input model.AddExpenseInput) int
+		AddIncome        func(childComplexity int, input model.AddIncomeInput) int
+		CommitCSVImport  func(childComplexity int, householdID int, rows []*model.ImportRowInput) int
+		CreateHousehold  func(childComplexity int, input ent.CreateHouseholdInput) int
+		Login            func(childComplexity int, input model.LoginInput) int
+		PreviewCSVImport func(childComplexity int, csvContent string, mapping model.ColumnMappingInput, householdID int) int
+		RefreshToken     func(childComplexity int, token string) int
+		Register         func(childComplexity int, input model.RegisterInput) int
 	}
 
 	PageInfo struct {
@@ -127,6 +159,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Accounts           func(childComplexity int) int
+		BankPresets        func(childComplexity int) int
 		Budgets            func(childComplexity int) int
 		Categories         func(childComplexity int) int
 		Health             func(childComplexity int) int
@@ -199,6 +232,8 @@ type MutationResolver interface {
 	CreateHousehold(ctx context.Context, input ent.CreateHouseholdInput) (*ent.Household, error)
 	AddExpense(ctx context.Context, input model.AddExpenseInput) (*ent.Transaction, error)
 	AddIncome(ctx context.Context, input model.AddIncomeInput) (*ent.Transaction, error)
+	PreviewCSVImport(ctx context.Context, csvContent string, mapping model.ColumnMappingInput, householdID int) ([]*model.ImportPreviewRow, error)
+	CommitCSVImport(ctx context.Context, householdID int, rows []*model.ImportRowInput) (*model.ImportSummary, error)
 }
 type QueryResolver interface {
 	Node(ctx context.Context, id int) (ent.Noder, error)
@@ -213,6 +248,7 @@ type QueryResolver interface {
 	Transactions(ctx context.Context) ([]*ent.Transaction, error)
 	TransactionEntries(ctx context.Context) ([]*ent.TransactionEntry, error)
 	Users(ctx context.Context) ([]*ent.User, error)
+	BankPresets(ctx context.Context) ([]*model.BankPreset, error)
 	Health(ctx context.Context) (bool, error)
 }
 
@@ -291,6 +327,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuthPayload.User(childComplexity), true
+
+	case "BankPreset.bankCode":
+		if e.ComplexityRoot.BankPreset.BankCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankPreset.BankCode(childComplexity), true
+	case "BankPreset.mapping":
+		if e.ComplexityRoot.BankPreset.Mapping == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankPreset.Mapping(childComplexity), true
+	case "BankPreset.name":
+		if e.ComplexityRoot.BankPreset.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BankPreset.Name(childComplexity), true
 
 	case "Budget.amountCents":
 		if e.ComplexityRoot.Budget.AmountCents == nil {
@@ -402,6 +457,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Category.Transactions(childComplexity), true
 
+	case "ColumnMappingOutput.amountCol":
+		if e.ComplexityRoot.ColumnMappingOutput.AmountCol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.AmountCol(childComplexity), true
+	case "ColumnMappingOutput.creditCol":
+		if e.ComplexityRoot.ColumnMappingOutput.CreditCol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.CreditCol(childComplexity), true
+	case "ColumnMappingOutput.dateCol":
+		if e.ComplexityRoot.ColumnMappingOutput.DateCol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.DateCol(childComplexity), true
+	case "ColumnMappingOutput.dateFormat":
+		if e.ComplexityRoot.ColumnMappingOutput.DateFormat == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.DateFormat(childComplexity), true
+	case "ColumnMappingOutput.debitCol":
+		if e.ComplexityRoot.ColumnMappingOutput.DebitCol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.DebitCol(childComplexity), true
+	case "ColumnMappingOutput.descriptionCol":
+		if e.ComplexityRoot.ColumnMappingOutput.DescriptionCol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.DescriptionCol(childComplexity), true
+	case "ColumnMappingOutput.skipRows":
+		if e.ComplexityRoot.ColumnMappingOutput.SkipRows == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ColumnMappingOutput.SkipRows(childComplexity), true
+
 	case "Household.accounts":
 		if e.ComplexityRoot.Household.Accounts == nil {
 			break
@@ -500,6 +598,56 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.HouseholdMember.User(childComplexity), true
 
+	case "ImportPreviewRow.amountCents":
+		if e.ComplexityRoot.ImportPreviewRow.AmountCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportPreviewRow.AmountCents(childComplexity), true
+	case "ImportPreviewRow.date":
+		if e.ComplexityRoot.ImportPreviewRow.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportPreviewRow.Date(childComplexity), true
+	case "ImportPreviewRow.description":
+		if e.ComplexityRoot.ImportPreviewRow.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportPreviewRow.Description(childComplexity), true
+	case "ImportPreviewRow.suggestedCategoryID":
+		if e.ComplexityRoot.ImportPreviewRow.SuggestedCategoryID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportPreviewRow.SuggestedCategoryID(childComplexity), true
+	case "ImportPreviewRow.suggestedCategoryName":
+		if e.ComplexityRoot.ImportPreviewRow.SuggestedCategoryName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportPreviewRow.SuggestedCategoryName(childComplexity), true
+
+	case "ImportSummary.skippedDuplicates":
+		if e.ComplexityRoot.ImportSummary.SkippedDuplicates == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportSummary.SkippedDuplicates(childComplexity), true
+	case "ImportSummary.totalAmountCents":
+		if e.ComplexityRoot.ImportSummary.TotalAmountCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportSummary.TotalAmountCents(childComplexity), true
+	case "ImportSummary.totalImported":
+		if e.ComplexityRoot.ImportSummary.TotalImported == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportSummary.TotalImported(childComplexity), true
+
 	case "Mutation.addExpense":
 		if e.ComplexityRoot.Mutation.AddExpense == nil {
 			break
@@ -522,6 +670,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddIncome(childComplexity, args["input"].(model.AddIncomeInput)), true
+	case "Mutation.commitCSVImport":
+		if e.ComplexityRoot.Mutation.CommitCSVImport == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_commitCSVImport_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CommitCSVImport(childComplexity, args["householdID"].(int), args["rows"].([]*model.ImportRowInput)), true
 	case "Mutation.createHousehold":
 		if e.ComplexityRoot.Mutation.CreateHousehold == nil {
 			break
@@ -544,6 +703,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Login(childComplexity, args["input"].(model.LoginInput)), true
+	case "Mutation.previewCSVImport":
+		if e.ComplexityRoot.Mutation.PreviewCSVImport == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_previewCSVImport_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.PreviewCSVImport(childComplexity, args["csvContent"].(string), args["mapping"].(model.ColumnMappingInput), args["householdID"].(int)), true
 	case "Mutation.refreshToken":
 		if e.ComplexityRoot.Mutation.RefreshToken == nil {
 			break
@@ -605,6 +775,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Accounts(childComplexity), true
+	case "Query.bankPresets":
+		if e.ComplexityRoot.Query.BankPresets == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.BankPresets(childComplexity), true
 	case "Query.budgets":
 		if e.ComplexityRoot.Query.Budgets == nil {
 			break
@@ -914,6 +1090,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddExpenseInput,
 		ec.unmarshalInputAddIncomeInput,
+		ec.unmarshalInputColumnMappingInput,
 		ec.unmarshalInputCreateAccountInput,
 		ec.unmarshalInputCreateBudgetInput,
 		ec.unmarshalInputCreateCategoryInput,
@@ -923,6 +1100,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateTagInput,
 		ec.unmarshalInputCreateTransactionInput,
 		ec.unmarshalInputCreateUserInput,
+		ec.unmarshalInputImportRowInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputUpdateAccountInput,
@@ -1008,7 +1186,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema.graphqls"
+//go:embed "import.graphqls" "schema.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1020,6 +1198,7 @@ func sourceData(filename string) string {
 }
 
 var sources = []*ast.Source{
+	{Name: "import.graphqls", Input: sourceData("import.graphqls"), BuiltIn: false},
 	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
 	{Name: "../ent.graphql", Input: `directive @goField(forceResolver: Boolean, name: String, omittable: Boolean) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @goModel(model: String, models: [String!], forceGenerate: Boolean) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
@@ -1565,6 +1744,22 @@ func (ec *executionContext) field_Mutation_addIncome_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_commitCSVImport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "rows", ec.unmarshalNImportRowInput2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportRowInputᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["rows"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createHousehold_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1584,6 +1779,27 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_previewCSVImport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "csvContent", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["csvContent"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "mapping", ec.unmarshalNColumnMappingInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐColumnMappingInput)
+	if err != nil {
+		return nil, err
+	}
+	args["mapping"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg2
 	return args, nil
 }
 
@@ -2029,6 +2245,109 @@ func (ec *executionContext) fieldContext_AuthPayload_user(_ context.Context, fie
 				return ec.fieldContext_User_transactions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankPreset_name(ctx context.Context, field graphql.CollectedField, obj *model.BankPreset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BankPreset_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BankPreset_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankPreset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankPreset_bankCode(ctx context.Context, field graphql.CollectedField, obj *model.BankPreset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BankPreset_bankCode,
+		func(ctx context.Context) (any, error) {
+			return obj.BankCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BankPreset_bankCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankPreset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BankPreset_mapping(ctx context.Context, field graphql.CollectedField, obj *model.BankPreset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BankPreset_mapping,
+		func(ctx context.Context) (any, error) {
+			return obj.Mapping, nil
+		},
+		nil,
+		ec.marshalNColumnMappingOutput2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐColumnMappingOutput,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BankPreset_mapping(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BankPreset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "dateCol":
+				return ec.fieldContext_ColumnMappingOutput_dateCol(ctx, field)
+			case "amountCol":
+				return ec.fieldContext_ColumnMappingOutput_amountCol(ctx, field)
+			case "descriptionCol":
+				return ec.fieldContext_ColumnMappingOutput_descriptionCol(ctx, field)
+			case "debitCol":
+				return ec.fieldContext_ColumnMappingOutput_debitCol(ctx, field)
+			case "creditCol":
+				return ec.fieldContext_ColumnMappingOutput_creditCol(ctx, field)
+			case "dateFormat":
+				return ec.fieldContext_ColumnMappingOutput_dateFormat(ctx, field)
+			case "skipRows":
+				return ec.fieldContext_ColumnMappingOutput_skipRows(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ColumnMappingOutput", field.Name)
 		},
 	}
 	return fc, nil
@@ -2738,6 +3057,209 @@ func (ec *executionContext) fieldContext_Category_recurringBills(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ColumnMappingOutput_dateCol(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_dateCol,
+		func(ctx context.Context) (any, error) {
+			return obj.DateCol, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_dateCol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ColumnMappingOutput_amountCol(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_amountCol,
+		func(ctx context.Context) (any, error) {
+			return obj.AmountCol, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_amountCol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ColumnMappingOutput_descriptionCol(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_descriptionCol,
+		func(ctx context.Context) (any, error) {
+			return obj.DescriptionCol, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_descriptionCol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ColumnMappingOutput_debitCol(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_debitCol,
+		func(ctx context.Context) (any, error) {
+			return obj.DebitCol, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_debitCol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ColumnMappingOutput_creditCol(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_creditCol,
+		func(ctx context.Context) (any, error) {
+			return obj.CreditCol, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_creditCol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ColumnMappingOutput_dateFormat(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_dateFormat,
+		func(ctx context.Context) (any, error) {
+			return obj.DateFormat, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_dateFormat(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ColumnMappingOutput_skipRows(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ColumnMappingOutput_skipRows,
+		func(ctx context.Context) (any, error) {
+			return obj.SkipRows, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ColumnMappingOutput_skipRows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ColumnMappingOutput",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Household_id(ctx context.Context, field graphql.CollectedField, obj *ent.Household) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3364,6 +3886,238 @@ func (ec *executionContext) fieldContext_HouseholdMember_user(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ImportPreviewRow_date(ctx context.Context, field graphql.CollectedField, obj *model.ImportPreviewRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportPreviewRow_date,
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportPreviewRow_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportPreviewRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportPreviewRow_amountCents(ctx context.Context, field graphql.CollectedField, obj *model.ImportPreviewRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportPreviewRow_amountCents,
+		func(ctx context.Context) (any, error) {
+			return obj.AmountCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportPreviewRow_amountCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportPreviewRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportPreviewRow_description(ctx context.Context, field graphql.CollectedField, obj *model.ImportPreviewRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportPreviewRow_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportPreviewRow_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportPreviewRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportPreviewRow_suggestedCategoryID(ctx context.Context, field graphql.CollectedField, obj *model.ImportPreviewRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportPreviewRow_suggestedCategoryID,
+		func(ctx context.Context) (any, error) {
+			return obj.SuggestedCategoryID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportPreviewRow_suggestedCategoryID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportPreviewRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportPreviewRow_suggestedCategoryName(ctx context.Context, field graphql.CollectedField, obj *model.ImportPreviewRow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportPreviewRow_suggestedCategoryName,
+		func(ctx context.Context) (any, error) {
+			return obj.SuggestedCategoryName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportPreviewRow_suggestedCategoryName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportPreviewRow",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportSummary_totalImported(ctx context.Context, field graphql.CollectedField, obj *model.ImportSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportSummary_totalImported,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalImported, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportSummary_totalImported(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportSummary_skippedDuplicates(ctx context.Context, field graphql.CollectedField, obj *model.ImportSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportSummary_skippedDuplicates,
+		func(ctx context.Context) (any, error) {
+			return obj.SkippedDuplicates, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportSummary_skippedDuplicates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportSummary_totalAmountCents(ctx context.Context, field graphql.CollectedField, obj *model.ImportSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportSummary_totalAmountCents,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalAmountCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportSummary_totalAmountCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_register(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3696,6 +4450,108 @@ func (ec *executionContext) fieldContext_Mutation_addIncome(ctx context.Context,
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addIncome_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_previewCSVImport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_previewCSVImport,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().PreviewCSVImport(ctx, fc.Args["csvContent"].(string), fc.Args["mapping"].(model.ColumnMappingInput), fc.Args["householdID"].(int))
+		},
+		nil,
+		ec.marshalNImportPreviewRow2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportPreviewRowᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_previewCSVImport(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_ImportPreviewRow_date(ctx, field)
+			case "amountCents":
+				return ec.fieldContext_ImportPreviewRow_amountCents(ctx, field)
+			case "description":
+				return ec.fieldContext_ImportPreviewRow_description(ctx, field)
+			case "suggestedCategoryID":
+				return ec.fieldContext_ImportPreviewRow_suggestedCategoryID(ctx, field)
+			case "suggestedCategoryName":
+				return ec.fieldContext_ImportPreviewRow_suggestedCategoryName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImportPreviewRow", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_previewCSVImport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_commitCSVImport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_commitCSVImport,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CommitCSVImport(ctx, fc.Args["householdID"].(int), fc.Args["rows"].([]*model.ImportRowInput))
+		},
+		nil,
+		ec.marshalNImportSummary2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportSummary,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_commitCSVImport(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "totalImported":
+				return ec.fieldContext_ImportSummary_totalImported(ctx, field)
+			case "skippedDuplicates":
+				return ec.fieldContext_ImportSummary_skippedDuplicates(ctx, field)
+			case "totalAmountCents":
+				return ec.fieldContext_ImportSummary_totalAmountCents(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImportSummary", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_commitCSVImport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4386,6 +5242,43 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 				return ec.fieldContext_User_transactions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_bankPresets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_bankPresets,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().BankPresets(ctx)
+		},
+		nil,
+		ec.marshalNBankPreset2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBankPresetᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_bankPresets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_BankPreset_name(ctx, field)
+			case "bankCode":
+				return ec.fieldContext_BankPreset_bankCode(ctx, field)
+			case "mapping":
+				return ec.fieldContext_BankPreset_mapping(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BankPreset", field.Name)
 		},
 	}
 	return fc, nil
@@ -7353,6 +8246,74 @@ func (ec *executionContext) unmarshalInputAddIncomeInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputColumnMappingInput(ctx context.Context, obj any) (model.ColumnMappingInput, error) {
+	var it model.ColumnMappingInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"dateCol", "amountCol", "descriptionCol", "debitCol", "creditCol", "dateFormat", "skipRows"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "dateCol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateCol"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DateCol = data
+		case "amountCol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amountCol"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AmountCol = data
+		case "descriptionCol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("descriptionCol"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DescriptionCol = data
+		case "debitCol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("debitCol"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DebitCol = data
+		case "creditCol":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("creditCol"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreditCol = data
+		case "dateFormat":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateFormat"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DateFormat = data
+		case "skipRows":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("skipRows"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SkipRows = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context, obj any) (ent.CreateAccountInput, error) {
 	var it ent.CreateAccountInput
 	asMap := map[string]any{}
@@ -7960,6 +8921,53 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.TransactionIDs = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputImportRowInput(ctx context.Context, obj any) (model.ImportRowInput, error) {
+	var it model.ImportRowInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"date", "amountCents", "description", "categoryID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "amountCents":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amountCents"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AmountCents = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "categoryID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("categoryID"))
+			data, err := ec.unmarshalNID2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CategoryID = data
 		}
 	}
 	return it, nil
@@ -9134,6 +10142,55 @@ func (ec *executionContext) _AuthPayload(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var bankPresetImplementors = []string{"BankPreset"}
+
+func (ec *executionContext) _BankPreset(ctx context.Context, sel ast.SelectionSet, obj *model.BankPreset) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bankPresetImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BankPreset")
+		case "name":
+			out.Values[i] = ec._BankPreset_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bankCode":
+			out.Values[i] = ec._BankPreset_bankCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mapping":
+			out.Values[i] = ec._BankPreset_mapping(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var budgetImplementors = []string{"Budget", "Node"}
 
 func (ec *executionContext) _Budget(ctx context.Context, sel ast.SelectionSet, obj *ent.Budget) graphql.Marshaler {
@@ -9496,6 +10553,66 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var columnMappingOutputImplementors = []string{"ColumnMappingOutput"}
+
+func (ec *executionContext) _ColumnMappingOutput(ctx context.Context, sel ast.SelectionSet, obj *model.ColumnMappingOutput) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, columnMappingOutputImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ColumnMappingOutput")
+		case "dateCol":
+			out.Values[i] = ec._ColumnMappingOutput_dateCol(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountCol":
+			out.Values[i] = ec._ColumnMappingOutput_amountCol(ctx, field, obj)
+		case "descriptionCol":
+			out.Values[i] = ec._ColumnMappingOutput_descriptionCol(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "debitCol":
+			out.Values[i] = ec._ColumnMappingOutput_debitCol(ctx, field, obj)
+		case "creditCol":
+			out.Values[i] = ec._ColumnMappingOutput_creditCol(ctx, field, obj)
+		case "dateFormat":
+			out.Values[i] = ec._ColumnMappingOutput_dateFormat(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "skipRows":
+			out.Values[i] = ec._ColumnMappingOutput_skipRows(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9925,6 +11042,111 @@ func (ec *executionContext) _HouseholdMember(ctx context.Context, sel ast.Select
 	return out
 }
 
+var importPreviewRowImplementors = []string{"ImportPreviewRow"}
+
+func (ec *executionContext) _ImportPreviewRow(ctx context.Context, sel ast.SelectionSet, obj *model.ImportPreviewRow) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, importPreviewRowImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImportPreviewRow")
+		case "date":
+			out.Values[i] = ec._ImportPreviewRow_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountCents":
+			out.Values[i] = ec._ImportPreviewRow_amountCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._ImportPreviewRow_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "suggestedCategoryID":
+			out.Values[i] = ec._ImportPreviewRow_suggestedCategoryID(ctx, field, obj)
+		case "suggestedCategoryName":
+			out.Values[i] = ec._ImportPreviewRow_suggestedCategoryName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var importSummaryImplementors = []string{"ImportSummary"}
+
+func (ec *executionContext) _ImportSummary(ctx context.Context, sel ast.SelectionSet, obj *model.ImportSummary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, importSummaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImportSummary")
+		case "totalImported":
+			out.Values[i] = ec._ImportSummary_totalImported(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "skippedDuplicates":
+			out.Values[i] = ec._ImportSummary_skippedDuplicates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalAmountCents":
+			out.Values[i] = ec._ImportSummary_totalAmountCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -9982,6 +11204,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "addIncome":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addIncome(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "previewCSVImport":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_previewCSVImport(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "commitCSVImport":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_commitCSVImport(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -10364,6 +11600,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_users(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "bankPresets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_bankPresets(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -11548,6 +12806,32 @@ func (ec *executionContext) marshalNAuthPayload2ᚖgithubᚗcomᚋexpenserᚋexp
 	return ec._AuthPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNBankPreset2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBankPresetᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.BankPreset) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBankPreset2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBankPreset(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBankPreset2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBankPreset(ctx context.Context, sel ast.SelectionSet, v *model.BankPreset) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BankPreset(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -11614,6 +12898,21 @@ func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋexpenserᚋexpens
 		return graphql.Null
 	}
 	return ec._Category(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNColumnMappingInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐColumnMappingInput(ctx context.Context, v any) (model.ColumnMappingInput, error) {
+	res, err := ec.unmarshalInputColumnMappingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNColumnMappingOutput2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐColumnMappingOutput(ctx context.Context, sel ast.SelectionSet, v *model.ColumnMappingOutput) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ColumnMappingOutput(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNCreateHouseholdInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐCreateHouseholdInput(ctx context.Context, v any) (ent.CreateHouseholdInput, error) {
@@ -11731,6 +13030,66 @@ func (ec *executionContext) marshalNID2ᚕintᚄ(ctx context.Context, sel ast.Se
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNImportPreviewRow2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportPreviewRowᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.ImportPreviewRow) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNImportPreviewRow2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportPreviewRow(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNImportPreviewRow2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportPreviewRow(ctx context.Context, sel ast.SelectionSet, v *model.ImportPreviewRow) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImportPreviewRow(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNImportRowInput2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportRowInputᚄ(ctx context.Context, v any) ([]*model.ImportRowInput, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*model.ImportRowInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNImportRowInput2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportRowInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNImportRowInput2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportRowInput(ctx context.Context, v any) (*model.ImportRowInput, error) {
+	res, err := ec.unmarshalInputImportRowInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImportSummary2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportSummary(ctx context.Context, sel ast.SelectionSet, v model.ImportSummary) graphql.Marshaler {
+	return ec._ImportSummary(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImportSummary2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐImportSummary(ctx context.Context, sel ast.SelectionSet, v *model.ImportSummary) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImportSummary(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {

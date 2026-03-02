@@ -1,0 +1,59 @@
+input ColumnMappingInput {
+  dateCol: Int!
+  amountCol: Int
+  descriptionCol: Int!
+  debitCol: Int
+  creditCol: Int
+  dateFormat: String!
+  skipRows: Int!
+}
+
+input ImportRowInput {
+  date: Time!
+  amountCents: Int!
+  description: String!
+  categoryID: ID!
+}
+
+type ImportPreviewRow {
+  date: Time!
+  amountCents: Int!
+  description: String!
+  suggestedCategoryID: ID
+  suggestedCategoryName: String!
+}
+
+type ImportSummary {
+  totalImported: Int!
+  skippedDuplicates: Int!
+  totalAmountCents: Int!
+}
+
+type BankPreset {
+  name: String!
+  bankCode: String!
+  mapping: ColumnMappingOutput!
+}
+
+type ColumnMappingOutput {
+  dateCol: Int!
+  amountCol: Int
+  descriptionCol: Int!
+  debitCol: Int
+  creditCol: Int
+  dateFormat: String!
+  skipRows: Int!
+}
+
+extend type Query {
+  """Returns preset column mappings for common Kenyan banks."""
+  bankPresets: [BankPreset!]!
+}
+
+extend type Mutation {
+  """Preview CSV import: parse and auto-categorize rows."""
+  previewCSVImport(csvContent: String!, mapping: ColumnMappingInput!, householdID: ID!): [ImportPreviewRow!]!
+
+  """Commit confirmed import rows as transactions."""
+  commitCSVImport(householdID: ID!, rows: [ImportRowInput!]!): ImportSummary!
+}

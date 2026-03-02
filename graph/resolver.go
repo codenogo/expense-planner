@@ -7,7 +7,8 @@ import (
 
 // Resolver is the root resolver for GraphQL queries.
 type Resolver struct {
-	Client *ent.Client
-	JWT    *service.JWTService
-	TxnSvc *service.TransactionService
+	Client    *ent.Client
+	JWT       *service.JWTService
+	TxnSvc   *service.TransactionService
+	ImportSvc *service.ImportService
 }
