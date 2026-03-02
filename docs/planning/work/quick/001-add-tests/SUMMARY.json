@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "001",
+  "slug": "add-tests",
+  "outcome": "complete",
+  "changes": [
+    {
+      "file": "internal/middleware/auth.go",
+      "action": "modified",
+      "description": "Added exported ContextWithUser helper for cross-package test context injection."
+    },
+    {
+      "file": "graph/resolver_test.go",
+      "action": "created",
+      "description": "Added 6 table-driven tests: 4 for userHouseholdIDs (no auth, no memberships, one membership, multiple memberships) and 2 for the membership authorization pattern (member allowed, non-member denied)."
+    }
+  ],
+  "verification": [
+    { "command": "go test ./graph/ -v -run TestUserHouseholdIDs", "result": "pass", "output": "4/4 subtests pass" },
+    { "command": "go test ./graph/ -v -run TestMembershipAuthorizationPattern", "result": "pass", "output": "2/2 subtests pass" },
+    { "command": "go test ./... -short", "result": "pass", "output": "all packages pass" }
+  ],
+  "commit": "pending",
+  "timestamp": "2026-03-02T12:20:00Z"
+}
