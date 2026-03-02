@@ -24,3 +24,14 @@ export const DASHBOARD_SUMMARY_QUERY = gql`
     }
   }
 `
+
+export const SPENDING_BY_CATEGORY_QUERY = gql`
+  query SpendingByCategory($householdID: ID!, $startDate: Time!, $endDate: Time!) {
+    spendingByCategory(householdID: $householdID, startDate: $startDate, endDate: $endDate) {
+      categoryID
+      name
+      totalCents
+      percentage
+    }
+  }
+`

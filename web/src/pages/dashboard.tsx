@@ -3,6 +3,7 @@ import { DASHBOARD_SUMMARY_QUERY } from '@/graphql/reports'
 import type { DashboardSummary } from '@/types/reports'
 import { useHousehold } from '@/providers/household-provider'
 import { SummaryCards } from '@/components/dashboard/summary-cards'
+import { SpendingChart } from '@/components/dashboard/spending-chart'
 
 export function DashboardPage() {
   const { currentHouseholdId, currentHousehold } = useHousehold()
@@ -59,6 +60,8 @@ export function DashboardPage() {
           currency={currentHousehold?.baseCurrency}
         />
       )}
+
+      <SpendingChart />
     </div>
   )
 }
