@@ -7,7 +7,7 @@ import { MappingStep } from '@/components/import/mapping-step'
 import { PreviewStep } from '@/components/import/preview-step'
 import { ConfirmStep } from '@/components/import/confirm-step'
 import type { ColumnMapping, ImportPreviewRow, ImportRowInput, ImportSummary } from '@/types/import'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Upload, Columns, Eye, CheckCircle2 } from 'lucide-react'
 
 type WizardStep = 'upload' | 'mapping' | 'preview' | 'confirm'
 
@@ -27,6 +27,13 @@ const defaultMapping: ColumnMapping = {
   dateFormat: '02/01/2006',
   skipRows: 1,
 }
+
+const steps: { key: WizardStep; label: string; icon: React.ElementType }[] = [
+  { key: 'upload', label: 'Upload', icon: Upload },
+  { key: 'mapping', label: 'Map Columns', icon: Columns },
+  { key: 'preview', label: 'Preview', icon: Eye },
+  { key: 'confirm', label: 'Confirm', icon: CheckCircle2 },
+]
 
 export function ImportPage() {
   const { currentHouseholdId } = useHousehold()
@@ -82,68 +89,81 @@ export function ImportPage() {
     })
   }
 
-  const stepLabels: Record<WizardStep, string> = {
-    upload: 'Upload CSV',
-    mapping: 'Map Columns',
-    preview: 'Preview',
-    confirm: 'Confirm',
-  }
+  const currentIdx = steps.findIndex((s) => s.key === state.step)
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Import Transactions</CardTitle>
-          <div className="flex gap-2 mt-2">
-            {(['upload', 'mapping', 'preview', 'confirm'] as WizardStep[]).map((s, i) => (
+    <div className="mx-auto max-w-3xl space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Import Transactions</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Upload a CSV file to bulk-import transactions
+        </p>
+      </div>
+
+      {/* Step indicators */}
+      <div className="flex items-center gap-2">
+        {steps.map((s, i) => {
+          const Icon = s.icon
+          const isActive = s.key === state.step
+          const isDone = i < currentIdx
+          return (
+            <div key={s.key} className="flex items-center gap-2">
+              {i > 0 && (
+                <div className={`h-px w-6 ${isDone ? 'bg-emerald-400' : 'bg-border'}`} />
+              )}
               <div
-                key={s}
-                className={`text-xs px-2 py-1 rounded ${
-                  s === state.step
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isActive
+                    ? 'bg-emerald-400/10 text-emerald-400'
+                    : isDone
+                    ? 'bg-emerald-400/10 text-emerald-400/70'
+                    : 'bg-muted/50 text-muted-foreground'
                 }`}
               >
-                {i + 1}. {stepLabels[s]}
+                <Icon className="h-3.5 w-3.5" />
+                {s.label}
               </div>
-            ))}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {state.step === 'upload' && (
-            <UploadStep onComplete={handleFileUploaded} />
-          )}
-          {state.step === 'mapping' && (
-            <MappingStep
-              csvContent={state.csvContent}
-              mapping={state.mapping}
-              onMappingChange={handleMappingChange}
-              onContinue={() => goToStep('preview')}
-              onBack={() => goToStep('upload')}
-            />
-          )}
-          {state.step === 'preview' && (
-            <PreviewStep
-              csvContent={state.csvContent}
-              mapping={state.mapping}
-              previewRows={state.previewRows}
-              onPreviewLoaded={handlePreviewLoaded}
-              onContinue={() => goToStep('confirm')}
-              onBack={() => goToStep('mapping')}
-            />
-          )}
-          {state.step === 'confirm' && (
-            <ConfirmStep
-              previewRows={state.previewRows}
-              onConfirm={handleConfirm}
-              onBack={() => goToStep('preview')}
-              loading={committing}
-              result={commitData?.commitCSVImport ?? null}
-              error={commitError?.message ?? null}
-            />
-          )}
-        </CardContent>
-      </Card>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Step content */}
+      <div className="rounded-xl border bg-card p-6">
+        {state.step === 'upload' && (
+          <UploadStep onComplete={handleFileUploaded} />
+        )}
+        {state.step === 'mapping' && (
+          <MappingStep
+            csvContent={state.csvContent}
+            mapping={state.mapping}
+            onMappingChange={handleMappingChange}
+            onContinue={() => goToStep('preview')}
+            onBack={() => goToStep('upload')}
+          />
+        )}
+        {state.step === 'preview' && (
+          <PreviewStep
+            csvContent={state.csvContent}
+            mapping={state.mapping}
+            previewRows={state.previewRows}
+            onPreviewLoaded={handlePreviewLoaded}
+            onContinue={() => goToStep('confirm')}
+            onBack={() => goToStep('mapping')}
+          />
+        )}
+        {state.step === 'confirm' && (
+          <ConfirmStep
+            previewRows={state.previewRows}
+            onConfirm={handleConfirm}
+            onBack={() => goToStep('preview')}
+            loading={committing}
+            result={commitData?.commitCSVImport ?? null}
+            error={commitError?.message ?? null}
+          />
+        )}
+      </div>
     </div>
   )
 }

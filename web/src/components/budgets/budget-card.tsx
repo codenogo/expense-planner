@@ -1,7 +1,4 @@
 import { formatCents } from '@/lib/format'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Budget } from '@/types/budget'
 
 interface BudgetCardProps {
@@ -15,22 +12,25 @@ export function BudgetCard({ budget, currency, spentCents = 0 }: BudgetCardProps
     ? Math.round((spentCents / budget.amountCents) * 100)
     : 0
   const remainingCents = budget.amountCents - spentCents
-  const colorClass =
-    pct > 90
-      ? '[&>div]:bg-red-500'
-      : pct > 75
-      ? '[&>div]:bg-yellow-500'
-      : '[&>div]:bg-green-500'
+
+  const barColor =
+    pct > 90 ? 'bg-rose-400' : pct > 75 ? 'bg-amber-400' : 'bg-emerald-400'
+  const remainColor = remainingCents < 0 ? 'text-rose-400' : 'text-emerald-400'
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between pb-2">
-        <CardTitle className="text-base font-semibold">{budget.category.name}</CardTitle>
+    <div className="rounded-xl border bg-card p-5 space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <h3 className="text-sm font-semibold">{budget.category.name}</h3>
         {budget.rollover && (
-          <Badge variant="secondary" className="text-xs">Rollover</Badge>
+          <span className="rounded-full bg-sky-400/10 px-2.5 py-0.5 text-xs font-medium text-sky-400">
+            Rollover
+          </span>
         )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+
+      {/* Stats */}
+      <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Budget</span>
           <span className="font-medium">{formatCents(budget.amountCents, currency)}</span>
@@ -43,15 +43,22 @@ export function BudgetCard({ budget, currency, spentCents = 0 }: BudgetCardProps
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Remaining</span>
-          <span className={`font-medium ${remainingCents < 0 ? 'text-red-600' : 'text-green-600'}`}>
+          <span className={`font-medium ${remainColor}`}>
             {formatCents(remainingCents, currency)}
           </span>
         </div>
-        <div className={colorClass}>
-          <Progress value={Math.min(pct, 100)} className="h-2" />
+      </div>
+
+      {/* Progress bar */}
+      <div>
+        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${barColor}`}
+            style={{ width: `${Math.min(pct, 100)}%` }}
+          />
         </div>
-        <p className="text-xs text-muted-foreground text-right">{pct}% used</p>
-      </CardContent>
-    </Card>
+        <p className="mt-1.5 text-xs text-muted-foreground text-right">{pct}% used</p>
+      </div>
+    </div>
   )
 }

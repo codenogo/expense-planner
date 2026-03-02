@@ -14,16 +14,11 @@ import { TrendReportPage } from '@/pages/reports/trend'
 import { BudgetsPage } from '@/pages/budgets/index'
 import { CreateBudgetPage } from '@/pages/budgets/create'
 import { BillsPage } from '@/pages/budgets/bills'
+import { MembersPage } from '@/pages/household/members'
+import { InvitePage } from '@/pages/household/invite'
+import { CreateHouseholdPage } from '@/pages/household/create'
+import { JoinHouseholdPage } from '@/pages/household/join'
 import { Toaster } from '@/components/ui/sonner'
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="text-muted-foreground mt-2">Coming soon...</p>
-    </div>
-  )
-}
 
 export default function App() {
   return (
@@ -47,7 +42,10 @@ export default function App() {
           <Route path="budgets" element={<BudgetsPage />} />
           <Route path="budgets/create" element={<CreateBudgetPage />} />
           <Route path="budgets/bills" element={<BillsPage />} />
-          <Route path="household" element={<PlaceholderPage title="Household" />} />
+          <Route path="household" element={<MembersPage />} />
+          <Route path="household/invite" element={<InvitePage />} />
+          <Route path="household/create" element={<CreateHouseholdPage />} />
+          <Route path="household/join" element={<JoinHouseholdPage />} />
         </Route>
       </Route>
     </Routes>

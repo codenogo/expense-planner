@@ -116,7 +116,7 @@ export function PreviewStep({
               <TableRow key={i}>
                 <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
                 <TableCell className="font-medium">{row.description}</TableCell>
-                <TableCell className={`text-right ${row.amountCents < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <TableCell className={`text-right ${row.amountCents < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                   {formatCents(row.amountCents, currency)}
                 </TableCell>
                 <TableCell>

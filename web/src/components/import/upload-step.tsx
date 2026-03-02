@@ -64,7 +64,7 @@ export function UploadStep({ onComplete }: UploadStepProps) {
       <div className="space-y-2">
         <Label>CSV File</Label>
         <div
-          className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 cursor-pointer hover:border-primary transition-colors"
+          className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border p-8 cursor-pointer hover:border-emerald-400/40 transition-colors"
           onClick={() => fileInputRef.current?.click()}
         >
           <input
