@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { ThemeProvider } from '@/providers/theme-provider'
 import { ApolloProvider } from '@/providers/apollo-provider'
 import { AuthProvider } from '@/providers/auth-provider'
+import { HouseholdProvider } from '@/providers/household-provider'
 import App from './app'
 import './index.css'
 
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider defaultTheme="system">
         <ApolloProvider>
           <AuthProvider>
-            <App />
+            <HouseholdProvider>
+              <App />
+            </HouseholdProvider>
           </AuthProvider>
         </ApolloProvider>
       </ThemeProvider>
