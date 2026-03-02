@@ -1,9 +1,6 @@
 import { useState } from 'react'
-import { useMutation } from '@apollo/client/react'
 import { useNavigate, Link } from 'react-router-dom'
-import { REGISTER_MUTATION } from '@/graphql/auth'
-import type { AuthPayload, RegisterInput } from '@/types/auth'
-import { setTokens } from '@/lib/auth'
+import { useAuth } from '@/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,33 +8,36 @@ import { Label } from '@/components/ui/label'
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const { register: authRegister } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [clientError, setClientError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const [register, { loading, error }] = useMutation<{ register: AuthPayload }, { input: RegisterInput }>(REGISTER_MUTATION, {
-    onCompleted(data) {
-      setTokens(data.register.accessToken, data.register.refreshToken)
-      navigate('/')
-    },
-  })
-
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setClientError(null)
+    setError(null)
 
     if (password.length < 8) {
-      setClientError('Password must be at least 8 characters')
+      setError('Password must be at least 8 characters')
       return
     }
     if (password !== confirmPassword) {
-      setClientError('Passwords do not match')
+      setError('Passwords do not match')
       return
     }
 
-    register({ variables: { input: { name, email, password } } })
+    setLoading(true)
+    try {
+      await authRegister({ name, email, password })
+      navigate('/')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -49,10 +49,8 @@ export function RegisterPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {(clientError || error) && (
-              <p className="text-sm text-destructive">
-                {clientError ?? error?.message}
-              </p>
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
             )}
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>

@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 
 	"entgo.io/contrib/entgql"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/expenser/expense-planner/ent"
@@ -21,11 +24,13 @@ import (
 func main() {
 	cfg := config.Load()
 
-	// Open PostgreSQL connection via pgx.
-	client, err := ent.Open("pgx", cfg.DatabaseURL)
+	// Open PostgreSQL connection via pgx driver registered with database/sql.
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("opening database connection: %v", err)
 	}
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	client := ent.NewClient(ent.Driver(drv))
 	defer client.Close()
 
 	// Run auto-migration.
@@ -62,8 +67,8 @@ func main() {
 	authMiddleware := middleware.Auth(jwtSvc)
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /", playground.Handler("Expense Planner", "/query"))
-	mux.Handle("/query", authMiddleware(srv))
+	mux.Handle("/", playground.Handler("Expense Planner", "/query"))
+	mux.Handle("POST /query", authMiddleware(srv))
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, `{"status":"ok"}`)
