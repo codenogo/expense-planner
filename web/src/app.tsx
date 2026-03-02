@@ -11,6 +11,7 @@ import { ImportPage } from '@/pages/import/index'
 import { ReportsPage } from '@/pages/reports/index'
 import { SpendingReportPage } from '@/pages/reports/spending'
 import { TrendReportPage } from '@/pages/reports/trend'
+import { BudgetsPage } from '@/pages/budgets/index'
 import { Toaster } from '@/components/ui/sonner'
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -41,7 +42,7 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/spending" element={<SpendingReportPage />} />
           <Route path="reports/trend" element={<TrendReportPage />} />
-          <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
+          <Route path="budgets" element={<BudgetsPage />} />
           <Route path="household" element={<PlaceholderPage title="Household" />} />
         </Route>
       </Route>
