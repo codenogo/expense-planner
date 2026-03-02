@@ -1,5 +1,8 @@
 import { Routes, Route } from 'react-router-dom'
 import { AppShell } from '@/components/layout/app-shell'
+import { ProtectedRoute } from '@/components/protected-route'
+import { LoginPage } from '@/pages/login'
+import { RegisterPage } from '@/pages/register'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -13,25 +16,20 @@ function PlaceholderPage({ title }: { title: string }) {
 export default function App() {
   return (
     <Routes>
-      <Route element={<AppShell />}>
-        <Route index element={<PlaceholderPage title="Dashboard" />} />
-        <Route
-          path="transactions"
-          element={<PlaceholderPage title="Transactions" />}
-        />
-        <Route path="import" element={<PlaceholderPage title="Import" />} />
-        <Route
-          path="reports"
-          element={<PlaceholderPage title="Reports" />}
-        />
-        <Route
-          path="budgets"
-          element={<PlaceholderPage title="Budgets" />}
-        />
-        <Route
-          path="household"
-          element={<PlaceholderPage title="Household" />}
-        />
+      {/* Public routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* Protected routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppShell />}>
+          <Route index element={<PlaceholderPage title="Dashboard" />} />
+          <Route path="transactions" element={<PlaceholderPage title="Transactions" />} />
+          <Route path="import" element={<PlaceholderPage title="Import" />} />
+          <Route path="reports" element={<PlaceholderPage title="Reports" />} />
+          <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
+          <Route path="household" element={<PlaceholderPage title="Household" />} />
+        </Route>
       </Route>
     </Routes>
   )
