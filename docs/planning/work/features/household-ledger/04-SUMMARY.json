@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "feature": "household-ledger",
+  "planNumber": "04",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create Transaction and TransactionEntry ent schemas",
+      "files": [
+        "ent/schema/transaction.go",
+        "ent/schema/transaction_entry.go",
+        "ent/schema/household.go",
+        "ent/schema/user.go",
+        "ent/schema/category.go",
+        "ent/schema/account.go"
+      ],
+      "description": "Created Transaction (journal header) and TransactionEntry (journal legs) ent schemas with all edges. Updated existing schemas with forward edges (transactions, entries)."
+    },
+    {
+      "task": "Create transaction service with double-entry logic",
+      "files": [
+        "internal/service/transaction.go",
+        "internal/service/transaction_test.go"
+      ],
+      "description": "Implemented TransactionService with AddExpense and AddIncome methods using DB transactions, atomic balance updates, and double-entry invariant enforcement. Added 5 tests covering happy paths, invalid amounts, and cumulative balances."
+    },
+    {
+      "task": "Create expense/income GraphQL mutations",
+      "files": [
+        "graph/schema.graphqls",
+        "graph/schema.resolvers.go",
+        "graph/ent.resolvers.go",
+        "graph/resolver.go",
+        "graph/generated.go",
+        "graph/model/models_gen.go",
+        "cmd/expense-planner/main.go"
+      ],
+      "description": "Added addExpense and addIncome mutations with input types. Implemented resolvers that authenticate users, resolve household membership and accounts, then delegate to TransactionService. Wired TransactionService into Resolver and main.go."
+    }
+  ],
+  "verification": [
+    {"command": "go build ./...", "result": "pass"},
+    {"command": "go test ./...", "result": "pass (13 tests)"},
+    {"command": "go vet ./...", "result": "pass"}
+  ],
+  "commit": "25819aa",
+  "timestamp": "2026-03-02T00:00:00Z"
+}

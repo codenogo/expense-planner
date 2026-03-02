@@ -437,6 +437,52 @@ func HasTransactionsWith(preds ...predicate.Transaction) predicate.Category {
 	})
 }
 
+// HasBudgets applies the HasEdge predicate on the "budgets" edge.
+func HasBudgets() predicate.Category {
+	return predicate.Category(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, BudgetsTable, BudgetsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasBudgetsWith applies the HasEdge predicate on the "budgets" edge with a given conditions (other predicates).
+func HasBudgetsWith(preds ...predicate.Budget) predicate.Category {
+	return predicate.Category(func(s *sql.Selector) {
+		step := newBudgetsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRecurringBills applies the HasEdge predicate on the "recurring_bills" edge.
+func HasRecurringBills() predicate.Category {
+	return predicate.Category(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RecurringBillsTable, RecurringBillsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRecurringBillsWith applies the HasEdge predicate on the "recurring_bills" edge with a given conditions (other predicates).
+func HasRecurringBillsWith(preds ...predicate.RecurringBill) predicate.Category {
+	return predicate.Category(func(s *sql.Selector) {
+		step := newRecurringBillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Category) predicate.Category {
 	return predicate.Category(sql.AndPredicates(predicates...))

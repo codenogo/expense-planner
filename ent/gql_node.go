@@ -14,10 +14,13 @@ import (
 	"entgo.io/ent/dialect/sql/schema"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
@@ -34,6 +37,11 @@ var accountImplementors = []string{"Account", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Account) IsNode() {}
+
+var budgetImplementors = []string{"Budget", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Budget) IsNode() {}
 
 var categoryImplementors = []string{"Category", "Node"}
 
@@ -54,6 +62,16 @@ var placeholderImplementors = []string{"Placeholder", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Placeholder) IsNode() {}
+
+var recurringbillImplementors = []string{"RecurringBill", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*RecurringBill) IsNode() {}
+
+var tagImplementors = []string{"Tag", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Tag) IsNode() {}
 
 var transactionImplementors = []string{"Transaction", "Node"}
 
@@ -137,6 +155,15 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			}
 		}
 		return query.Only(ctx)
+	case budget.Table:
+		query := c.Budget.Query().
+			Where(budget.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, budgetImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case category.Table:
 		query := c.Category.Query().
 			Where(category.ID(id))
@@ -169,6 +196,24 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(placeholder.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, placeholderImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case recurringbill.Table:
+		query := c.RecurringBill.Query().
+			Where(recurringbill.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, recurringbillImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case tag.Table:
+		query := c.Tag.Query().
+			Where(tag.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, tagImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -289,6 +334,22 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 				*noder = node
 			}
 		}
+	case budget.Table:
+		query := c.Budget.Query().
+			Where(budget.IDIn(ids...))
+		query, err := query.CollectFields(ctx, budgetImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case category.Table:
 		query := c.Category.Query().
 			Where(category.IDIn(ids...))
@@ -341,6 +402,38 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Placeholder.Query().
 			Where(placeholder.IDIn(ids...))
 		query, err := query.CollectFields(ctx, placeholderImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case recurringbill.Table:
+		query := c.RecurringBill.Query().
+			Where(recurringbill.IDIn(ids...))
+		query, err := query.CollectFields(ctx, recurringbillImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case tag.Table:
+		query := c.Tag.Query().
+			Where(tag.IDIn(ids...))
+		query, err := query.CollectFields(ctx, tagImplementors...)
 		if err != nil {
 			return nil, err
 		}

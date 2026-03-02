@@ -11,9 +11,12 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 )
 
@@ -116,6 +119,51 @@ func (_c *HouseholdCreate) AddTransactions(v ...*Transaction) *HouseholdCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTransactionIDs(ids...)
+}
+
+// AddBudgetIDs adds the "budgets" edge to the Budget entity by IDs.
+func (_c *HouseholdCreate) AddBudgetIDs(ids ...int) *HouseholdCreate {
+	_c.mutation.AddBudgetIDs(ids...)
+	return _c
+}
+
+// AddBudgets adds the "budgets" edges to the Budget entity.
+func (_c *HouseholdCreate) AddBudgets(v ...*Budget) *HouseholdCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddBudgetIDs(ids...)
+}
+
+// AddTagIDs adds the "tags" edge to the Tag entity by IDs.
+func (_c *HouseholdCreate) AddTagIDs(ids ...int) *HouseholdCreate {
+	_c.mutation.AddTagIDs(ids...)
+	return _c
+}
+
+// AddTags adds the "tags" edges to the Tag entity.
+func (_c *HouseholdCreate) AddTags(v ...*Tag) *HouseholdCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTagIDs(ids...)
+}
+
+// AddRecurringBillIDs adds the "recurring_bills" edge to the RecurringBill entity by IDs.
+func (_c *HouseholdCreate) AddRecurringBillIDs(ids ...int) *HouseholdCreate {
+	_c.mutation.AddRecurringBillIDs(ids...)
+	return _c
+}
+
+// AddRecurringBills adds the "recurring_bills" edges to the RecurringBill entity.
+func (_c *HouseholdCreate) AddRecurringBills(v ...*RecurringBill) *HouseholdCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddRecurringBillIDs(ids...)
 }
 
 // Mutation returns the HouseholdMutation object of the builder.
@@ -279,6 +327,54 @@ func (_c *HouseholdCreate) createSpec() (*Household, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(transaction.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BudgetsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.BudgetsTable,
+			Columns: []string{household.BudgetsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(budget.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TagsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.TagsTable,
+			Columns: []string{household.TagsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RecurringBillsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.RecurringBillsTable,
+			Columns: []string{household.RecurringBillsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(recurringbill.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

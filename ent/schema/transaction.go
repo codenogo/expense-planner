@@ -46,6 +46,8 @@ func (Transaction) Edges() []ent.Edge {
 		edge.From("category", Category.Type).
 			Ref("transactions").
 			Unique(),
+		edge.From("tags", Tag.Type).
+			Ref("transactions"),
 	}
 }
 

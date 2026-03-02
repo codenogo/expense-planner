@@ -13,10 +13,13 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
@@ -81,10 +84,13 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			account.Table:          account.ValidColumn,
+			budget.Table:           budget.ValidColumn,
 			category.Table:         category.ValidColumn,
 			household.Table:        household.ValidColumn,
 			householdmember.Table:  householdmember.ValidColumn,
 			placeholder.Table:      placeholder.ValidColumn,
+			recurringbill.Table:    recurringbill.ValidColumn,
+			tag.Table:              tag.ValidColumn,
 			transaction.Table:      transaction.ValidColumn,
 			transactionentry.Table: transactionentry.ValidColumn,
 			user.Table:             user.ValidColumn,

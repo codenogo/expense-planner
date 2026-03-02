@@ -9,6 +9,9 @@ import (
 // Account is the predicate function for account builders.
 type Account func(*sql.Selector)
 
+// Budget is the predicate function for budget builders.
+type Budget func(*sql.Selector)
+
 // Category is the predicate function for category builders.
 type Category func(*sql.Selector)
 
@@ -20,6 +23,12 @@ type HouseholdMember func(*sql.Selector)
 
 // Placeholder is the predicate function for placeholder builders.
 type Placeholder func(*sql.Selector)
+
+// RecurringBill is the predicate function for recurringbill builders.
+type RecurringBill func(*sql.Selector)
+
+// Tag is the predicate function for tag builders.
+type Tag func(*sql.Selector)
 
 // Transaction is the predicate function for transaction builders.
 type Transaction func(*sql.Selector)

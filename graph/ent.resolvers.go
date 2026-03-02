@@ -26,6 +26,11 @@ func (r *queryResolver) Accounts(ctx context.Context) ([]*ent.Account, error) {
 	return r.Client.Account.Query().All(ctx)
 }
 
+// Budgets is the resolver for the budgets field.
+func (r *queryResolver) Budgets(ctx context.Context) ([]*ent.Budget, error) {
+	return r.Client.Budget.Query().All(ctx)
+}
+
 // Categories is the resolver for the categories field.
 func (r *queryResolver) Categories(ctx context.Context) ([]*ent.Category, error) {
 	return r.Client.Category.Query().All(ctx)
@@ -39,6 +44,16 @@ func (r *queryResolver) Households(ctx context.Context) ([]*ent.Household, error
 // HouseholdMembers is the resolver for the householdMembers field.
 func (r *queryResolver) HouseholdMembers(ctx context.Context) ([]*ent.HouseholdMember, error) {
 	return r.Client.HouseholdMember.Query().All(ctx)
+}
+
+// RecurringBills is the resolver for the recurringBills field.
+func (r *queryResolver) RecurringBills(ctx context.Context) ([]*ent.RecurringBill, error) {
+	return r.Client.RecurringBill.Query().All(ctx)
+}
+
+// Tags is the resolver for the tags field.
+func (r *queryResolver) Tags(ctx context.Context) ([]*ent.Tag, error) {
+	return r.Client.Tag.Query().All(ctx)
 }
 
 // Transactions is the resolver for the transactions field.

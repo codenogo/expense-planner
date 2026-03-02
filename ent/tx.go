@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Account is the client for interacting with the Account builders.
 	Account *AccountClient
+	// Budget is the client for interacting with the Budget builders.
+	Budget *BudgetClient
 	// Category is the client for interacting with the Category builders.
 	Category *CategoryClient
 	// Household is the client for interacting with the Household builders.
@@ -22,6 +24,10 @@ type Tx struct {
 	HouseholdMember *HouseholdMemberClient
 	// Placeholder is the client for interacting with the Placeholder builders.
 	Placeholder *PlaceholderClient
+	// RecurringBill is the client for interacting with the RecurringBill builders.
+	RecurringBill *RecurringBillClient
+	// Tag is the client for interacting with the Tag builders.
+	Tag *TagClient
 	// Transaction is the client for interacting with the Transaction builders.
 	Transaction *TransactionClient
 	// TransactionEntry is the client for interacting with the TransactionEntry builders.
@@ -160,10 +166,13 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Account = NewAccountClient(tx.config)
+	tx.Budget = NewBudgetClient(tx.config)
 	tx.Category = NewCategoryClient(tx.config)
 	tx.Household = NewHouseholdClient(tx.config)
 	tx.HouseholdMember = NewHouseholdMemberClient(tx.config)
 	tx.Placeholder = NewPlaceholderClient(tx.config)
+	tx.RecurringBill = NewRecurringBillClient(tx.config)
+	tx.Tag = NewTagClient(tx.config)
 	tx.Transaction = NewTransactionClient(tx.config)
 	tx.TransactionEntry = NewTransactionEntryClient(tx.config)
 	tx.User = NewUserClient(tx.config)

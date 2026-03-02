@@ -47,13 +47,16 @@ type TransactionEdges struct {
 	Entries []*TransactionEntry `json:"entries,omitempty"`
 	// Category holds the value of the category edge.
 	Category *Category `json:"category,omitempty"`
+	// Tags holds the value of the tags edge.
+	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [5]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [5]map[string]int
 
 	namedEntries map[string][]*TransactionEntry
+	namedTags    map[string][]*Tag
 }
 
 // HouseholdOrErr returns the Household value or an error if the edge
@@ -96,6 +99,15 @@ func (e TransactionEdges) CategoryOrErr() (*Category, error) {
 		return nil, &NotFoundError{label: category.Label}
 	}
 	return nil, &NotLoadedError{edge: "category"}
+}
+
+// TagsOrErr returns the Tags value or an error if the edge
+// was not loaded in eager-loading.
+func (e TransactionEdges) TagsOrErr() ([]*Tag, error) {
+	if e.loadedTypes[4] {
+		return e.Tags, nil
+	}
+	return nil, &NotLoadedError{edge: "tags"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -214,6 +226,11 @@ func (_m *Transaction) QueryCategory() *CategoryQuery {
 	return NewTransactionClient(_m.config).QueryCategory(_m)
 }
 
+// QueryTags queries the "tags" edge of the Transaction entity.
+func (_m *Transaction) QueryTags() *TagQuery {
+	return NewTransactionClient(_m.config).QueryTags(_m)
+}
+
 // Update returns a builder for updating this Transaction.
 // Note that you need to call Transaction.Unwrap() before calling this method if this Transaction
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -273,6 +290,30 @@ func (_m *Transaction) appendNamedEntries(name string, edges ...*TransactionEntr
 		_m.Edges.namedEntries[name] = []*TransactionEntry{}
 	} else {
 		_m.Edges.namedEntries[name] = append(_m.Edges.namedEntries[name], edges...)
+	}
+}
+
+// NamedTags returns the Tags named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Transaction) NamedTags(name string) ([]*Tag, error) {
+	if _m.Edges.namedTags == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTags[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Transaction) appendNamedTags(name string, edges ...*Tag) {
+	if _m.Edges.namedTags == nil {
+		_m.Edges.namedTags = make(map[string][]*Tag)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTags[name] = []*Tag{}
+	} else {
+		_m.Edges.namedTags[name] = append(_m.Edges.namedTags[name], edges...)
 	}
 }
 

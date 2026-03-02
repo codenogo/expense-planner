@@ -6,10 +6,13 @@ import (
 	"time"
 
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/schema"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
 )
@@ -32,6 +35,20 @@ func init() {
 	accountDescCreatedAt := accountFields[3].Descriptor()
 	// account.DefaultCreatedAt holds the default value on creation for the created_at field.
 	account.DefaultCreatedAt = accountDescCreatedAt.Default.(func() time.Time)
+	budgetFields := schema.Budget{}.Fields()
+	_ = budgetFields
+	// budgetDescMonth is the schema descriptor for month field.
+	budgetDescMonth := budgetFields[0].Descriptor()
+	// budget.MonthValidator is a validator for the "month" field. It is called by the builders before save.
+	budget.MonthValidator = budgetDescMonth.Validators[0].(func(string) error)
+	// budgetDescAmountCents is the schema descriptor for amount_cents field.
+	budgetDescAmountCents := budgetFields[1].Descriptor()
+	// budget.AmountCentsValidator is a validator for the "amount_cents" field. It is called by the builders before save.
+	budget.AmountCentsValidator = budgetDescAmountCents.Validators[0].(func(int64) error)
+	// budgetDescRollover is the schema descriptor for rollover field.
+	budgetDescRollover := budgetFields[2].Descriptor()
+	// budget.DefaultRollover holds the default value on creation for the rollover field.
+	budget.DefaultRollover = budgetDescRollover.Default.(bool)
 	categoryFields := schema.Category{}.Fields()
 	_ = categoryFields
 	// categoryDescName is the schema descriptor for name field.
@@ -68,6 +85,44 @@ func init() {
 	householdmemberDescJoinedAt := householdmemberFields[1].Descriptor()
 	// householdmember.DefaultJoinedAt holds the default value on creation for the joined_at field.
 	householdmember.DefaultJoinedAt = householdmemberDescJoinedAt.Default.(func() time.Time)
+	recurringbillFields := schema.RecurringBill{}.Fields()
+	_ = recurringbillFields
+	// recurringbillDescName is the schema descriptor for name field.
+	recurringbillDescName := recurringbillFields[0].Descriptor()
+	// recurringbill.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	recurringbill.NameValidator = recurringbillDescName.Validators[0].(func(string) error)
+	// recurringbillDescAmountCents is the schema descriptor for amount_cents field.
+	recurringbillDescAmountCents := recurringbillFields[1].Descriptor()
+	// recurringbill.AmountCentsValidator is a validator for the "amount_cents" field. It is called by the builders before save.
+	recurringbill.AmountCentsValidator = recurringbillDescAmountCents.Validators[0].(func(int64) error)
+	// recurringbillDescDueDay is the schema descriptor for due_day field.
+	recurringbillDescDueDay := recurringbillFields[2].Descriptor()
+	// recurringbill.DueDayValidator is a validator for the "due_day" field. It is called by the builders before save.
+	recurringbill.DueDayValidator = func() func(int) error {
+		validators := recurringbillDescDueDay.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(due_day int) error {
+			for _, fn := range fns {
+				if err := fn(due_day); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// recurringbillDescCreatedAt is the schema descriptor for created_at field.
+	recurringbillDescCreatedAt := recurringbillFields[5].Descriptor()
+	// recurringbill.DefaultCreatedAt holds the default value on creation for the created_at field.
+	recurringbill.DefaultCreatedAt = recurringbillDescCreatedAt.Default.(func() time.Time)
+	tagFields := schema.Tag{}.Fields()
+	_ = tagFields
+	// tagDescName is the schema descriptor for name field.
+	tagDescName := tagFields[0].Descriptor()
+	// tag.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	tag.NameValidator = tagDescName.Validators[0].(func(string) error)
 	transactionFields := schema.Transaction{}.Fields()
 	_ = transactionFields
 	// transactionDescDescription is the schema descriptor for description field.

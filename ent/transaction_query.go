@@ -15,6 +15,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
@@ -31,10 +32,12 @@ type TransactionQuery struct {
 	withCreatedBy    *UserQuery
 	withEntries      *TransactionEntryQuery
 	withCategory     *CategoryQuery
+	withTags         *TagQuery
 	withFKs          bool
 	modifiers        []func(*sql.Selector)
 	loadTotal        []func(context.Context, []*Transaction) error
 	withNamedEntries map[string]*TransactionEntryQuery
+	withNamedTags    map[string]*TagQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -152,6 +155,28 @@ func (_q *TransactionQuery) QueryCategory() *CategoryQuery {
 			sqlgraph.From(transaction.Table, transaction.FieldID, selector),
 			sqlgraph.To(category.Table, category.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, transaction.CategoryTable, transaction.CategoryColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTags chains the current query on the "tags" edge.
+func (_q *TransactionQuery) QueryTags() *TagQuery {
+	query := (&TagClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(transaction.Table, transaction.FieldID, selector),
+			sqlgraph.To(tag.Table, tag.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, transaction.TagsTable, transaction.TagsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -355,6 +380,7 @@ func (_q *TransactionQuery) Clone() *TransactionQuery {
 		withCreatedBy: _q.withCreatedBy.Clone(),
 		withEntries:   _q.withEntries.Clone(),
 		withCategory:  _q.withCategory.Clone(),
+		withTags:      _q.withTags.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -402,6 +428,17 @@ func (_q *TransactionQuery) WithCategory(opts ...func(*CategoryQuery)) *Transact
 		opt(query)
 	}
 	_q.withCategory = query
+	return _q
+}
+
+// WithTags tells the query-builder to eager-load the nodes that are connected to
+// the "tags" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *TransactionQuery) WithTags(opts ...func(*TagQuery)) *TransactionQuery {
+	query := (&TagClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTags = query
 	return _q
 }
 
@@ -484,11 +521,12 @@ func (_q *TransactionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 		nodes       = []*Transaction{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [5]bool{
 			_q.withHousehold != nil,
 			_q.withCreatedBy != nil,
 			_q.withEntries != nil,
 			_q.withCategory != nil,
+			_q.withTags != nil,
 		}
 	)
 	if _q.withHousehold != nil || _q.withCreatedBy != nil || _q.withCategory != nil {
@@ -543,10 +581,24 @@ func (_q *TransactionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*
 			return nil, err
 		}
 	}
+	if query := _q.withTags; query != nil {
+		if err := _q.loadTags(ctx, query, nodes,
+			func(n *Transaction) { n.Edges.Tags = []*Tag{} },
+			func(n *Transaction, e *Tag) { n.Edges.Tags = append(n.Edges.Tags, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedEntries {
 		if err := _q.loadEntries(ctx, query, nodes,
 			func(n *Transaction) { n.appendNamedEntries(name) },
 			func(n *Transaction, e *TransactionEntry) { n.appendNamedEntries(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTags {
+		if err := _q.loadTags(ctx, query, nodes,
+			func(n *Transaction) { n.appendNamedTags(name) },
+			func(n *Transaction, e *Tag) { n.appendNamedTags(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -685,6 +737,67 @@ func (_q *TransactionQuery) loadCategory(ctx context.Context, query *CategoryQue
 	}
 	return nil
 }
+func (_q *TransactionQuery) loadTags(ctx context.Context, query *TagQuery, nodes []*Transaction, init func(*Transaction), assign func(*Transaction, *Tag)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int]*Transaction)
+	nids := make(map[int]map[*Transaction]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(transaction.TagsTable)
+		s.Join(joinT).On(s.C(tag.FieldID), joinT.C(transaction.TagsPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(transaction.TagsPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(transaction.TagsPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := int(values[0].(*sql.NullInt64).Int64)
+				inValue := int(values[1].(*sql.NullInt64).Int64)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Transaction]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Tag](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "tags" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
 
 func (_q *TransactionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -781,6 +894,20 @@ func (_q *TransactionQuery) WithNamedEntries(name string, opts ...func(*Transact
 		_q.withNamedEntries = make(map[string]*TransactionEntryQuery)
 	}
 	_q.withNamedEntries[name] = query
+	return _q
+}
+
+// WithNamedTags tells the query-builder to eager-load the nodes that are connected to the "tags"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *TransactionQuery) WithNamedTags(name string, opts ...func(*TagQuery)) *TransactionQuery {
+	query := (&TagClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTags == nil {
+		_q.withNamedTags = make(map[string]*TagQuery)
+	}
+	_q.withNamedTags[name] = query
 	return _q
 }
 

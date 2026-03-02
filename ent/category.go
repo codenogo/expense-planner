@@ -46,14 +46,20 @@ type CategoryEdges struct {
 	Children []*Category `json:"children,omitempty"`
 	// Transactions holds the value of the transactions edge.
 	Transactions []*Transaction `json:"transactions,omitempty"`
+	// Budgets holds the value of the budgets edge.
+	Budgets []*Budget `json:"budgets,omitempty"`
+	// RecurringBills holds the value of the recurring_bills edge.
+	RecurringBills []*RecurringBill `json:"recurring_bills,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [6]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [6]map[string]int
 
-	namedChildren     map[string][]*Category
-	namedTransactions map[string][]*Transaction
+	namedChildren       map[string][]*Category
+	namedTransactions   map[string][]*Transaction
+	namedBudgets        map[string][]*Budget
+	namedRecurringBills map[string][]*RecurringBill
 }
 
 // HouseholdOrErr returns the Household value or an error if the edge
@@ -94,6 +100,24 @@ func (e CategoryEdges) TransactionsOrErr() ([]*Transaction, error) {
 		return e.Transactions, nil
 	}
 	return nil, &NotLoadedError{edge: "transactions"}
+}
+
+// BudgetsOrErr returns the Budgets value or an error if the edge
+// was not loaded in eager-loading.
+func (e CategoryEdges) BudgetsOrErr() ([]*Budget, error) {
+	if e.loadedTypes[4] {
+		return e.Budgets, nil
+	}
+	return nil, &NotLoadedError{edge: "budgets"}
+}
+
+// RecurringBillsOrErr returns the RecurringBills value or an error if the edge
+// was not loaded in eager-loading.
+func (e CategoryEdges) RecurringBillsOrErr() ([]*RecurringBill, error) {
+	if e.loadedTypes[5] {
+		return e.RecurringBills, nil
+	}
+	return nil, &NotLoadedError{edge: "recurring_bills"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -213,6 +237,16 @@ func (_m *Category) QueryTransactions() *TransactionQuery {
 	return NewCategoryClient(_m.config).QueryTransactions(_m)
 }
 
+// QueryBudgets queries the "budgets" edge of the Category entity.
+func (_m *Category) QueryBudgets() *BudgetQuery {
+	return NewCategoryClient(_m.config).QueryBudgets(_m)
+}
+
+// QueryRecurringBills queries the "recurring_bills" edge of the Category entity.
+func (_m *Category) QueryRecurringBills() *RecurringBillQuery {
+	return NewCategoryClient(_m.config).QueryRecurringBills(_m)
+}
+
 // Update returns a builder for updating this Category.
 // Note that you need to call Category.Unwrap() before calling this method if this Category
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -303,6 +337,54 @@ func (_m *Category) appendNamedTransactions(name string, edges ...*Transaction) 
 		_m.Edges.namedTransactions[name] = []*Transaction{}
 	} else {
 		_m.Edges.namedTransactions[name] = append(_m.Edges.namedTransactions[name], edges...)
+	}
+}
+
+// NamedBudgets returns the Budgets named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Category) NamedBudgets(name string) ([]*Budget, error) {
+	if _m.Edges.namedBudgets == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedBudgets[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Category) appendNamedBudgets(name string, edges ...*Budget) {
+	if _m.Edges.namedBudgets == nil {
+		_m.Edges.namedBudgets = make(map[string][]*Budget)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedBudgets[name] = []*Budget{}
+	} else {
+		_m.Edges.namedBudgets[name] = append(_m.Edges.namedBudgets[name], edges...)
+	}
+}
+
+// NamedRecurringBills returns the RecurringBills named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Category) NamedRecurringBills(name string) ([]*RecurringBill, error) {
+	if _m.Edges.namedRecurringBills == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedRecurringBills[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Category) appendNamedRecurringBills(name string, edges ...*RecurringBill) {
+	if _m.Edges.namedRecurringBills == nil {
+		_m.Edges.namedRecurringBills = make(map[string][]*RecurringBill)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedRecurringBills[name] = []*RecurringBill{}
+	} else {
+		_m.Edges.namedRecurringBills[name] = append(_m.Edges.namedRecurringBills[name], edges...)
 	}
 }
 

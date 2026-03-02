@@ -39,16 +39,25 @@ type HouseholdEdges struct {
 	Categories []*Category `json:"categories,omitempty"`
 	// Transactions holds the value of the transactions edge.
 	Transactions []*Transaction `json:"transactions,omitempty"`
+	// Budgets holds the value of the budgets edge.
+	Budgets []*Budget `json:"budgets,omitempty"`
+	// Tags holds the value of the tags edge.
+	Tags []*Tag `json:"tags,omitempty"`
+	// RecurringBills holds the value of the recurring_bills edge.
+	RecurringBills []*RecurringBill `json:"recurring_bills,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [7]bool
 	// totalCount holds the count of the edges above.
-	totalCount [4]map[string]int
+	totalCount [7]map[string]int
 
-	namedMembers      map[string][]*HouseholdMember
-	namedAccounts     map[string][]*Account
-	namedCategories   map[string][]*Category
-	namedTransactions map[string][]*Transaction
+	namedMembers        map[string][]*HouseholdMember
+	namedAccounts       map[string][]*Account
+	namedCategories     map[string][]*Category
+	namedTransactions   map[string][]*Transaction
+	namedBudgets        map[string][]*Budget
+	namedTags           map[string][]*Tag
+	namedRecurringBills map[string][]*RecurringBill
 }
 
 // MembersOrErr returns the Members value or an error if the edge
@@ -85,6 +94,33 @@ func (e HouseholdEdges) TransactionsOrErr() ([]*Transaction, error) {
 		return e.Transactions, nil
 	}
 	return nil, &NotLoadedError{edge: "transactions"}
+}
+
+// BudgetsOrErr returns the Budgets value or an error if the edge
+// was not loaded in eager-loading.
+func (e HouseholdEdges) BudgetsOrErr() ([]*Budget, error) {
+	if e.loadedTypes[4] {
+		return e.Budgets, nil
+	}
+	return nil, &NotLoadedError{edge: "budgets"}
+}
+
+// TagsOrErr returns the Tags value or an error if the edge
+// was not loaded in eager-loading.
+func (e HouseholdEdges) TagsOrErr() ([]*Tag, error) {
+	if e.loadedTypes[5] {
+		return e.Tags, nil
+	}
+	return nil, &NotLoadedError{edge: "tags"}
+}
+
+// RecurringBillsOrErr returns the RecurringBills value or an error if the edge
+// was not loaded in eager-loading.
+func (e HouseholdEdges) RecurringBillsOrErr() ([]*RecurringBill, error) {
+	if e.loadedTypes[6] {
+		return e.RecurringBills, nil
+	}
+	return nil, &NotLoadedError{edge: "recurring_bills"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -168,6 +204,21 @@ func (_m *Household) QueryCategories() *CategoryQuery {
 // QueryTransactions queries the "transactions" edge of the Household entity.
 func (_m *Household) QueryTransactions() *TransactionQuery {
 	return NewHouseholdClient(_m.config).QueryTransactions(_m)
+}
+
+// QueryBudgets queries the "budgets" edge of the Household entity.
+func (_m *Household) QueryBudgets() *BudgetQuery {
+	return NewHouseholdClient(_m.config).QueryBudgets(_m)
+}
+
+// QueryTags queries the "tags" edge of the Household entity.
+func (_m *Household) QueryTags() *TagQuery {
+	return NewHouseholdClient(_m.config).QueryTags(_m)
+}
+
+// QueryRecurringBills queries the "recurring_bills" edge of the Household entity.
+func (_m *Household) QueryRecurringBills() *RecurringBillQuery {
+	return NewHouseholdClient(_m.config).QueryRecurringBills(_m)
 }
 
 // Update returns a builder for updating this Household.
@@ -298,6 +349,78 @@ func (_m *Household) appendNamedTransactions(name string, edges ...*Transaction)
 		_m.Edges.namedTransactions[name] = []*Transaction{}
 	} else {
 		_m.Edges.namedTransactions[name] = append(_m.Edges.namedTransactions[name], edges...)
+	}
+}
+
+// NamedBudgets returns the Budgets named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Household) NamedBudgets(name string) ([]*Budget, error) {
+	if _m.Edges.namedBudgets == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedBudgets[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Household) appendNamedBudgets(name string, edges ...*Budget) {
+	if _m.Edges.namedBudgets == nil {
+		_m.Edges.namedBudgets = make(map[string][]*Budget)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedBudgets[name] = []*Budget{}
+	} else {
+		_m.Edges.namedBudgets[name] = append(_m.Edges.namedBudgets[name], edges...)
+	}
+}
+
+// NamedTags returns the Tags named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Household) NamedTags(name string) ([]*Tag, error) {
+	if _m.Edges.namedTags == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTags[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Household) appendNamedTags(name string, edges ...*Tag) {
+	if _m.Edges.namedTags == nil {
+		_m.Edges.namedTags = make(map[string][]*Tag)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTags[name] = []*Tag{}
+	} else {
+		_m.Edges.namedTags[name] = append(_m.Edges.namedTags[name], edges...)
+	}
+}
+
+// NamedRecurringBills returns the RecurringBills named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Household) NamedRecurringBills(name string) ([]*RecurringBill, error) {
+	if _m.Edges.namedRecurringBills == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedRecurringBills[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Household) appendNamedRecurringBills(name string, edges ...*RecurringBill) {
+	if _m.Edges.namedRecurringBills == nil {
+		_m.Edges.namedRecurringBills = make(map[string][]*RecurringBill)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedRecurringBills[name] = []*RecurringBill{}
+	} else {
+		_m.Edges.namedRecurringBills[name] = append(_m.Edges.namedRecurringBills[name], edges...)
 	}
 }
 

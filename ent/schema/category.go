@@ -45,6 +45,8 @@ func (Category) Edges() []ent.Edge {
 			From("parent").
 			Unique(),
 		edge.To("transactions", Transaction.Type),
+		edge.To("budgets", Budget.Type),
+		edge.To("recurring_bills", RecurringBill.Type),
 	}
 }
 

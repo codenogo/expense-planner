@@ -38,6 +38,42 @@ var (
 			},
 		},
 	}
+	// BudgetsColumns holds the columns for the "budgets" table.
+	BudgetsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "month", Type: field.TypeString},
+		{Name: "amount_cents", Type: field.TypeInt64},
+		{Name: "rollover", Type: field.TypeBool, Default: false},
+		{Name: "category_budgets", Type: field.TypeInt},
+		{Name: "household_budgets", Type: field.TypeInt},
+	}
+	// BudgetsTable holds the schema information for the "budgets" table.
+	BudgetsTable = &schema.Table{
+		Name:       "budgets",
+		Columns:    BudgetsColumns,
+		PrimaryKey: []*schema.Column{BudgetsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "budgets_categories_budgets",
+				Columns:    []*schema.Column{BudgetsColumns[4]},
+				RefColumns: []*schema.Column{CategoriesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "budgets_households_budgets",
+				Columns:    []*schema.Column{BudgetsColumns[5]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "budget_month_household_budgets_category_budgets",
+				Unique:  true,
+				Columns: []*schema.Column{BudgetsColumns[1], BudgetsColumns[5], BudgetsColumns[4]},
+			},
+		},
+	}
 	// CategoriesColumns holds the columns for the "categories" table.
 	CategoriesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -120,6 +156,66 @@ var (
 		Columns:    PlaceholdersColumns,
 		PrimaryKey: []*schema.Column{PlaceholdersColumns[0]},
 	}
+	// RecurringBillsColumns holds the columns for the "recurring_bills" table.
+	RecurringBillsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "amount_cents", Type: field.TypeInt64},
+		{Name: "due_day", Type: field.TypeInt},
+		{Name: "frequency", Type: field.TypeEnum, Enums: []string{"monthly", "weekly", "annual"}, Default: "monthly"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "paid", "overdue"}, Default: "pending"},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "category_recurring_bills", Type: field.TypeInt, Nullable: true},
+		{Name: "household_recurring_bills", Type: field.TypeInt},
+	}
+	// RecurringBillsTable holds the schema information for the "recurring_bills" table.
+	RecurringBillsTable = &schema.Table{
+		Name:       "recurring_bills",
+		Columns:    RecurringBillsColumns,
+		PrimaryKey: []*schema.Column{RecurringBillsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "recurring_bills_categories_recurring_bills",
+				Columns:    []*schema.Column{RecurringBillsColumns[7]},
+				RefColumns: []*schema.Column{CategoriesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "recurring_bills_households_recurring_bills",
+				Columns:    []*schema.Column{RecurringBillsColumns[8]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// TagsColumns holds the columns for the "tags" table.
+	TagsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "color", Type: field.TypeString, Nullable: true},
+		{Name: "household_tags", Type: field.TypeInt},
+	}
+	// TagsTable holds the schema information for the "tags" table.
+	TagsTable = &schema.Table{
+		Name:       "tags",
+		Columns:    TagsColumns,
+		PrimaryKey: []*schema.Column{TagsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tags_households_tags",
+				Columns:    []*schema.Column{TagsColumns[3]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "tag_name_household_tags",
+				Unique:  true,
+				Columns: []*schema.Column{TagsColumns[1], TagsColumns[3]},
+			},
+		},
+	}
 	// TransactionsColumns holds the columns for the "transactions" table.
 	TransactionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -199,28 +295,64 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// TagTransactionsColumns holds the columns for the "tag_transactions" table.
+	TagTransactionsColumns = []*schema.Column{
+		{Name: "tag_id", Type: field.TypeInt},
+		{Name: "transaction_id", Type: field.TypeInt},
+	}
+	// TagTransactionsTable holds the schema information for the "tag_transactions" table.
+	TagTransactionsTable = &schema.Table{
+		Name:       "tag_transactions",
+		Columns:    TagTransactionsColumns,
+		PrimaryKey: []*schema.Column{TagTransactionsColumns[0], TagTransactionsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tag_transactions_tag_id",
+				Columns:    []*schema.Column{TagTransactionsColumns[0]},
+				RefColumns: []*schema.Column{TagsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "tag_transactions_transaction_id",
+				Columns:    []*schema.Column{TagTransactionsColumns[1]},
+				RefColumns: []*schema.Column{TransactionsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AccountsTable,
+		BudgetsTable,
 		CategoriesTable,
 		HouseholdsTable,
 		HouseholdMembersTable,
 		PlaceholdersTable,
+		RecurringBillsTable,
+		TagsTable,
 		TransactionsTable,
 		TransactionEntriesTable,
 		UsersTable,
+		TagTransactionsTable,
 	}
 )
 
 func init() {
 	AccountsTable.ForeignKeys[0].RefTable = HouseholdsTable
+	BudgetsTable.ForeignKeys[0].RefTable = CategoriesTable
+	BudgetsTable.ForeignKeys[1].RefTable = HouseholdsTable
 	CategoriesTable.ForeignKeys[0].RefTable = CategoriesTable
 	CategoriesTable.ForeignKeys[1].RefTable = HouseholdsTable
 	HouseholdMembersTable.ForeignKeys[0].RefTable = HouseholdsTable
 	HouseholdMembersTable.ForeignKeys[1].RefTable = UsersTable
+	RecurringBillsTable.ForeignKeys[0].RefTable = CategoriesTable
+	RecurringBillsTable.ForeignKeys[1].RefTable = HouseholdsTable
+	TagsTable.ForeignKeys[0].RefTable = HouseholdsTable
 	TransactionsTable.ForeignKeys[0].RefTable = CategoriesTable
 	TransactionsTable.ForeignKeys[1].RefTable = HouseholdsTable
 	TransactionsTable.ForeignKeys[2].RefTable = UsersTable
 	TransactionEntriesTable.ForeignKeys[0].RefTable = AccountsTable
 	TransactionEntriesTable.ForeignKeys[1].RefTable = TransactionsTable
+	TagTransactionsTable.ForeignKeys[0].RefTable = TagsTable
+	TagTransactionsTable.ForeignKeys[1].RefTable = TransactionsTable
 }

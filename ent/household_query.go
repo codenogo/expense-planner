@@ -13,30 +13,39 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 )
 
 // HouseholdQuery is the builder for querying Household entities.
 type HouseholdQuery struct {
 	config
-	ctx                   *QueryContext
-	order                 []household.OrderOption
-	inters                []Interceptor
-	predicates            []predicate.Household
-	withMembers           *HouseholdMemberQuery
-	withAccounts          *AccountQuery
-	withCategories        *CategoryQuery
-	withTransactions      *TransactionQuery
-	modifiers             []func(*sql.Selector)
-	loadTotal             []func(context.Context, []*Household) error
-	withNamedMembers      map[string]*HouseholdMemberQuery
-	withNamedAccounts     map[string]*AccountQuery
-	withNamedCategories   map[string]*CategoryQuery
-	withNamedTransactions map[string]*TransactionQuery
+	ctx                     *QueryContext
+	order                   []household.OrderOption
+	inters                  []Interceptor
+	predicates              []predicate.Household
+	withMembers             *HouseholdMemberQuery
+	withAccounts            *AccountQuery
+	withCategories          *CategoryQuery
+	withTransactions        *TransactionQuery
+	withBudgets             *BudgetQuery
+	withTags                *TagQuery
+	withRecurringBills      *RecurringBillQuery
+	modifiers               []func(*sql.Selector)
+	loadTotal               []func(context.Context, []*Household) error
+	withNamedMembers        map[string]*HouseholdMemberQuery
+	withNamedAccounts       map[string]*AccountQuery
+	withNamedCategories     map[string]*CategoryQuery
+	withNamedTransactions   map[string]*TransactionQuery
+	withNamedBudgets        map[string]*BudgetQuery
+	withNamedTags           map[string]*TagQuery
+	withNamedRecurringBills map[string]*RecurringBillQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -154,6 +163,72 @@ func (_q *HouseholdQuery) QueryTransactions() *TransactionQuery {
 			sqlgraph.From(household.Table, household.FieldID, selector),
 			sqlgraph.To(transaction.Table, transaction.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, household.TransactionsTable, household.TransactionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryBudgets chains the current query on the "budgets" edge.
+func (_q *HouseholdQuery) QueryBudgets() *BudgetQuery {
+	query := (&BudgetClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, selector),
+			sqlgraph.To(budget.Table, budget.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.BudgetsTable, household.BudgetsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTags chains the current query on the "tags" edge.
+func (_q *HouseholdQuery) QueryTags() *TagQuery {
+	query := (&TagClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, selector),
+			sqlgraph.To(tag.Table, tag.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.TagsTable, household.TagsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRecurringBills chains the current query on the "recurring_bills" edge.
+func (_q *HouseholdQuery) QueryRecurringBills() *RecurringBillQuery {
+	query := (&RecurringBillClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, selector),
+			sqlgraph.To(recurringbill.Table, recurringbill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.RecurringBillsTable, household.RecurringBillsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -348,15 +423,18 @@ func (_q *HouseholdQuery) Clone() *HouseholdQuery {
 		return nil
 	}
 	return &HouseholdQuery{
-		config:           _q.config,
-		ctx:              _q.ctx.Clone(),
-		order:            append([]household.OrderOption{}, _q.order...),
-		inters:           append([]Interceptor{}, _q.inters...),
-		predicates:       append([]predicate.Household{}, _q.predicates...),
-		withMembers:      _q.withMembers.Clone(),
-		withAccounts:     _q.withAccounts.Clone(),
-		withCategories:   _q.withCategories.Clone(),
-		withTransactions: _q.withTransactions.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]household.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.Household{}, _q.predicates...),
+		withMembers:        _q.withMembers.Clone(),
+		withAccounts:       _q.withAccounts.Clone(),
+		withCategories:     _q.withCategories.Clone(),
+		withTransactions:   _q.withTransactions.Clone(),
+		withBudgets:        _q.withBudgets.Clone(),
+		withTags:           _q.withTags.Clone(),
+		withRecurringBills: _q.withRecurringBills.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -404,6 +482,39 @@ func (_q *HouseholdQuery) WithTransactions(opts ...func(*TransactionQuery)) *Hou
 		opt(query)
 	}
 	_q.withTransactions = query
+	return _q
+}
+
+// WithBudgets tells the query-builder to eager-load the nodes that are connected to
+// the "budgets" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithBudgets(opts ...func(*BudgetQuery)) *HouseholdQuery {
+	query := (&BudgetClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBudgets = query
+	return _q
+}
+
+// WithTags tells the query-builder to eager-load the nodes that are connected to
+// the "tags" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithTags(opts ...func(*TagQuery)) *HouseholdQuery {
+	query := (&TagClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTags = query
+	return _q
+}
+
+// WithRecurringBills tells the query-builder to eager-load the nodes that are connected to
+// the "recurring_bills" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithRecurringBills(opts ...func(*RecurringBillQuery)) *HouseholdQuery {
+	query := (&RecurringBillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRecurringBills = query
 	return _q
 }
 
@@ -485,11 +596,14 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 	var (
 		nodes       = []*Household{}
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [7]bool{
 			_q.withMembers != nil,
 			_q.withAccounts != nil,
 			_q.withCategories != nil,
 			_q.withTransactions != nil,
+			_q.withBudgets != nil,
+			_q.withTags != nil,
+			_q.withRecurringBills != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -541,6 +655,27 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 			return nil, err
 		}
 	}
+	if query := _q.withBudgets; query != nil {
+		if err := _q.loadBudgets(ctx, query, nodes,
+			func(n *Household) { n.Edges.Budgets = []*Budget{} },
+			func(n *Household, e *Budget) { n.Edges.Budgets = append(n.Edges.Budgets, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTags; query != nil {
+		if err := _q.loadTags(ctx, query, nodes,
+			func(n *Household) { n.Edges.Tags = []*Tag{} },
+			func(n *Household, e *Tag) { n.Edges.Tags = append(n.Edges.Tags, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withRecurringBills; query != nil {
+		if err := _q.loadRecurringBills(ctx, query, nodes,
+			func(n *Household) { n.Edges.RecurringBills = []*RecurringBill{} },
+			func(n *Household, e *RecurringBill) { n.Edges.RecurringBills = append(n.Edges.RecurringBills, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedMembers {
 		if err := _q.loadMembers(ctx, query, nodes,
 			func(n *Household) { n.appendNamedMembers(name) },
@@ -566,6 +701,27 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 		if err := _q.loadTransactions(ctx, query, nodes,
 			func(n *Household) { n.appendNamedTransactions(name) },
 			func(n *Household, e *Transaction) { n.appendNamedTransactions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedBudgets {
+		if err := _q.loadBudgets(ctx, query, nodes,
+			func(n *Household) { n.appendNamedBudgets(name) },
+			func(n *Household, e *Budget) { n.appendNamedBudgets(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTags {
+		if err := _q.loadTags(ctx, query, nodes,
+			func(n *Household) { n.appendNamedTags(name) },
+			func(n *Household, e *Tag) { n.appendNamedTags(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedRecurringBills {
+		if err := _q.loadRecurringBills(ctx, query, nodes,
+			func(n *Household) { n.appendNamedRecurringBills(name) },
+			func(n *Household, e *RecurringBill) { n.appendNamedRecurringBills(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -696,6 +852,99 @@ func (_q *HouseholdQuery) loadTransactions(ctx context.Context, query *Transacti
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "household_transactions" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *HouseholdQuery) loadBudgets(ctx context.Context, query *BudgetQuery, nodes []*Household, init func(*Household), assign func(*Household, *Budget)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Household)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Budget(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(household.BudgetsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.household_budgets
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "household_budgets" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "household_budgets" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *HouseholdQuery) loadTags(ctx context.Context, query *TagQuery, nodes []*Household, init func(*Household), assign func(*Household, *Tag)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Household)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Tag(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(household.TagsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.household_tags
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "household_tags" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "household_tags" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *HouseholdQuery) loadRecurringBills(ctx context.Context, query *RecurringBillQuery, nodes []*Household, init func(*Household), assign func(*Household, *RecurringBill)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Household)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.RecurringBill(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(household.RecurringBillsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.household_recurring_bills
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "household_recurring_bills" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "household_recurring_bills" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -839,6 +1088,48 @@ func (_q *HouseholdQuery) WithNamedTransactions(name string, opts ...func(*Trans
 		_q.withNamedTransactions = make(map[string]*TransactionQuery)
 	}
 	_q.withNamedTransactions[name] = query
+	return _q
+}
+
+// WithNamedBudgets tells the query-builder to eager-load the nodes that are connected to the "budgets"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithNamedBudgets(name string, opts ...func(*BudgetQuery)) *HouseholdQuery {
+	query := (&BudgetClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedBudgets == nil {
+		_q.withNamedBudgets = make(map[string]*BudgetQuery)
+	}
+	_q.withNamedBudgets[name] = query
+	return _q
+}
+
+// WithNamedTags tells the query-builder to eager-load the nodes that are connected to the "tags"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithNamedTags(name string, opts ...func(*TagQuery)) *HouseholdQuery {
+	query := (&TagClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTags == nil {
+		_q.withNamedTags = make(map[string]*TagQuery)
+	}
+	_q.withNamedTags[name] = query
+	return _q
+}
+
+// WithNamedRecurringBills tells the query-builder to eager-load the nodes that are connected to the "recurring_bills"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithNamedRecurringBills(name string, opts ...func(*RecurringBillQuery)) *HouseholdQuery {
+	query := (&RecurringBillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedRecurringBills == nil {
+		_q.withNamedRecurringBills = make(map[string]*RecurringBillQuery)
+	}
+	_q.withNamedRecurringBills[name] = query
 	return _q
 }
 

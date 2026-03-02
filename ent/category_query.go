@@ -12,28 +12,34 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/transaction"
 )
 
 // CategoryQuery is the builder for querying Category entities.
 type CategoryQuery struct {
 	config
-	ctx                   *QueryContext
-	order                 []category.OrderOption
-	inters                []Interceptor
-	predicates            []predicate.Category
-	withHousehold         *HouseholdQuery
-	withParent            *CategoryQuery
-	withChildren          *CategoryQuery
-	withTransactions      *TransactionQuery
-	withFKs               bool
-	modifiers             []func(*sql.Selector)
-	loadTotal             []func(context.Context, []*Category) error
-	withNamedChildren     map[string]*CategoryQuery
-	withNamedTransactions map[string]*TransactionQuery
+	ctx                     *QueryContext
+	order                   []category.OrderOption
+	inters                  []Interceptor
+	predicates              []predicate.Category
+	withHousehold           *HouseholdQuery
+	withParent              *CategoryQuery
+	withChildren            *CategoryQuery
+	withTransactions        *TransactionQuery
+	withBudgets             *BudgetQuery
+	withRecurringBills      *RecurringBillQuery
+	withFKs                 bool
+	modifiers               []func(*sql.Selector)
+	loadTotal               []func(context.Context, []*Category) error
+	withNamedChildren       map[string]*CategoryQuery
+	withNamedTransactions   map[string]*TransactionQuery
+	withNamedBudgets        map[string]*BudgetQuery
+	withNamedRecurringBills map[string]*RecurringBillQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -151,6 +157,50 @@ func (_q *CategoryQuery) QueryTransactions() *TransactionQuery {
 			sqlgraph.From(category.Table, category.FieldID, selector),
 			sqlgraph.To(transaction.Table, transaction.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, category.TransactionsTable, category.TransactionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryBudgets chains the current query on the "budgets" edge.
+func (_q *CategoryQuery) QueryBudgets() *BudgetQuery {
+	query := (&BudgetClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(category.Table, category.FieldID, selector),
+			sqlgraph.To(budget.Table, budget.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, category.BudgetsTable, category.BudgetsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRecurringBills chains the current query on the "recurring_bills" edge.
+func (_q *CategoryQuery) QueryRecurringBills() *RecurringBillQuery {
+	query := (&RecurringBillClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(category.Table, category.FieldID, selector),
+			sqlgraph.To(recurringbill.Table, recurringbill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, category.RecurringBillsTable, category.RecurringBillsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -345,15 +395,17 @@ func (_q *CategoryQuery) Clone() *CategoryQuery {
 		return nil
 	}
 	return &CategoryQuery{
-		config:           _q.config,
-		ctx:              _q.ctx.Clone(),
-		order:            append([]category.OrderOption{}, _q.order...),
-		inters:           append([]Interceptor{}, _q.inters...),
-		predicates:       append([]predicate.Category{}, _q.predicates...),
-		withHousehold:    _q.withHousehold.Clone(),
-		withParent:       _q.withParent.Clone(),
-		withChildren:     _q.withChildren.Clone(),
-		withTransactions: _q.withTransactions.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]category.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.Category{}, _q.predicates...),
+		withHousehold:      _q.withHousehold.Clone(),
+		withParent:         _q.withParent.Clone(),
+		withChildren:       _q.withChildren.Clone(),
+		withTransactions:   _q.withTransactions.Clone(),
+		withBudgets:        _q.withBudgets.Clone(),
+		withRecurringBills: _q.withRecurringBills.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -401,6 +453,28 @@ func (_q *CategoryQuery) WithTransactions(opts ...func(*TransactionQuery)) *Cate
 		opt(query)
 	}
 	_q.withTransactions = query
+	return _q
+}
+
+// WithBudgets tells the query-builder to eager-load the nodes that are connected to
+// the "budgets" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *CategoryQuery) WithBudgets(opts ...func(*BudgetQuery)) *CategoryQuery {
+	query := (&BudgetClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBudgets = query
+	return _q
+}
+
+// WithRecurringBills tells the query-builder to eager-load the nodes that are connected to
+// the "recurring_bills" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *CategoryQuery) WithRecurringBills(opts ...func(*RecurringBillQuery)) *CategoryQuery {
+	query := (&RecurringBillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withRecurringBills = query
 	return _q
 }
 
@@ -483,11 +557,13 @@ func (_q *CategoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cat
 		nodes       = []*Category{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [6]bool{
 			_q.withHousehold != nil,
 			_q.withParent != nil,
 			_q.withChildren != nil,
 			_q.withTransactions != nil,
+			_q.withBudgets != nil,
+			_q.withRecurringBills != nil,
 		}
 	)
 	if _q.withHousehold != nil || _q.withParent != nil {
@@ -543,6 +619,20 @@ func (_q *CategoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cat
 			return nil, err
 		}
 	}
+	if query := _q.withBudgets; query != nil {
+		if err := _q.loadBudgets(ctx, query, nodes,
+			func(n *Category) { n.Edges.Budgets = []*Budget{} },
+			func(n *Category, e *Budget) { n.Edges.Budgets = append(n.Edges.Budgets, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withRecurringBills; query != nil {
+		if err := _q.loadRecurringBills(ctx, query, nodes,
+			func(n *Category) { n.Edges.RecurringBills = []*RecurringBill{} },
+			func(n *Category, e *RecurringBill) { n.Edges.RecurringBills = append(n.Edges.RecurringBills, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedChildren {
 		if err := _q.loadChildren(ctx, query, nodes,
 			func(n *Category) { n.appendNamedChildren(name) },
@@ -554,6 +644,20 @@ func (_q *CategoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cat
 		if err := _q.loadTransactions(ctx, query, nodes,
 			func(n *Category) { n.appendNamedTransactions(name) },
 			func(n *Category, e *Transaction) { n.appendNamedTransactions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedBudgets {
+		if err := _q.loadBudgets(ctx, query, nodes,
+			func(n *Category) { n.appendNamedBudgets(name) },
+			func(n *Category, e *Budget) { n.appendNamedBudgets(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedRecurringBills {
+		if err := _q.loadRecurringBills(ctx, query, nodes,
+			func(n *Category) { n.appendNamedRecurringBills(name) },
+			func(n *Category, e *RecurringBill) { n.appendNamedRecurringBills(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -691,6 +795,68 @@ func (_q *CategoryQuery) loadTransactions(ctx context.Context, query *Transactio
 	}
 	return nil
 }
+func (_q *CategoryQuery) loadBudgets(ctx context.Context, query *BudgetQuery, nodes []*Category, init func(*Category), assign func(*Category, *Budget)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Category)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Budget(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(category.BudgetsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.category_budgets
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "category_budgets" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "category_budgets" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *CategoryQuery) loadRecurringBills(ctx context.Context, query *RecurringBillQuery, nodes []*Category, init func(*Category), assign func(*Category, *RecurringBill)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Category)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.RecurringBill(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(category.RecurringBillsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.category_recurring_bills
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "category_recurring_bills" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "category_recurring_bills" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 
 func (_q *CategoryQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -801,6 +967,34 @@ func (_q *CategoryQuery) WithNamedTransactions(name string, opts ...func(*Transa
 		_q.withNamedTransactions = make(map[string]*TransactionQuery)
 	}
 	_q.withNamedTransactions[name] = query
+	return _q
+}
+
+// WithNamedBudgets tells the query-builder to eager-load the nodes that are connected to the "budgets"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *CategoryQuery) WithNamedBudgets(name string, opts ...func(*BudgetQuery)) *CategoryQuery {
+	query := (&BudgetClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedBudgets == nil {
+		_q.withNamedBudgets = make(map[string]*BudgetQuery)
+	}
+	_q.withNamedBudgets[name] = query
+	return _q
+}
+
+// WithNamedRecurringBills tells the query-builder to eager-load the nodes that are connected to the "recurring_bills"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *CategoryQuery) WithNamedRecurringBills(name string, opts ...func(*RecurringBillQuery)) *CategoryQuery {
+	query := (&RecurringBillClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedRecurringBills == nil {
+		_q.withNamedRecurringBills = make(map[string]*RecurringBillQuery)
+	}
+	_q.withNamedRecurringBills[name] = query
 	return _q
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/expenser/expense-planner/ent/account"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/transaction"
 )
 
@@ -90,17 +91,85 @@ func (c *AccountUpdateOne) SetInput(i UpdateAccountInput) *AccountUpdateOne {
 	return c
 }
 
+// CreateBudgetInput represents a mutation input for creating budgets.
+type CreateBudgetInput struct {
+	Month       string
+	AmountCents int64
+	Rollover    *bool
+	HouseholdID int
+	CategoryID  int
+}
+
+// Mutate applies the CreateBudgetInput on the BudgetMutation builder.
+func (i *CreateBudgetInput) Mutate(m *BudgetMutation) {
+	m.SetMonth(i.Month)
+	m.SetAmountCents(i.AmountCents)
+	if v := i.Rollover; v != nil {
+		m.SetRollover(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+	m.SetCategoryID(i.CategoryID)
+}
+
+// SetInput applies the change-set in the CreateBudgetInput on the BudgetCreate builder.
+func (c *BudgetCreate) SetInput(i CreateBudgetInput) *BudgetCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateBudgetInput represents a mutation input for updating budgets.
+type UpdateBudgetInput struct {
+	Month       *string
+	AmountCents *int64
+	Rollover    *bool
+	HouseholdID *int
+	CategoryID  *int
+}
+
+// Mutate applies the UpdateBudgetInput on the BudgetMutation builder.
+func (i *UpdateBudgetInput) Mutate(m *BudgetMutation) {
+	if v := i.Month; v != nil {
+		m.SetMonth(*v)
+	}
+	if v := i.AmountCents; v != nil {
+		m.SetAmountCents(*v)
+	}
+	if v := i.Rollover; v != nil {
+		m.SetRollover(*v)
+	}
+	if v := i.HouseholdID; v != nil {
+		m.SetHouseholdID(*v)
+	}
+	if v := i.CategoryID; v != nil {
+		m.SetCategoryID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateBudgetInput on the BudgetUpdate builder.
+func (c *BudgetUpdate) SetInput(i UpdateBudgetInput) *BudgetUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateBudgetInput on the BudgetUpdateOne builder.
+func (c *BudgetUpdateOne) SetInput(i UpdateBudgetInput) *BudgetUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateCategoryInput represents a mutation input for creating categories.
 type CreateCategoryInput struct {
-	Name           string
-	Icon           *string
-	Color          *string
-	IsSystem       *bool
-	CreatedAt      *time.Time
-	HouseholdID    int
-	ParentID       *int
-	ChildIDs       []int
-	TransactionIDs []int
+	Name             string
+	Icon             *string
+	Color            *string
+	IsSystem         *bool
+	CreatedAt        *time.Time
+	HouseholdID      int
+	ParentID         *int
+	ChildIDs         []int
+	TransactionIDs   []int
+	BudgetIDs        []int
+	RecurringBillIDs []int
 }
 
 // Mutate applies the CreateCategoryInput on the CategoryMutation builder.
@@ -128,6 +197,12 @@ func (i *CreateCategoryInput) Mutate(m *CategoryMutation) {
 	if v := i.TransactionIDs; len(v) > 0 {
 		m.AddTransactionIDs(v...)
 	}
+	if v := i.BudgetIDs; len(v) > 0 {
+		m.AddBudgetIDs(v...)
+	}
+	if v := i.RecurringBillIDs; len(v) > 0 {
+		m.AddRecurringBillIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the CreateCategoryInput on the CategoryCreate builder.
@@ -138,21 +213,27 @@ func (c *CategoryCreate) SetInput(i CreateCategoryInput) *CategoryCreate {
 
 // UpdateCategoryInput represents a mutation input for updating categories.
 type UpdateCategoryInput struct {
-	Name                 *string
-	ClearIcon            bool
-	Icon                 *string
-	ClearColor           bool
-	Color                *string
-	IsSystem             *bool
-	HouseholdID          *int
-	ClearParent          bool
-	ParentID             *int
-	ClearChildren        bool
-	AddChildIDs          []int
-	RemoveChildIDs       []int
-	ClearTransactions    bool
-	AddTransactionIDs    []int
-	RemoveTransactionIDs []int
+	Name                   *string
+	ClearIcon              bool
+	Icon                   *string
+	ClearColor             bool
+	Color                  *string
+	IsSystem               *bool
+	HouseholdID            *int
+	ClearParent            bool
+	ParentID               *int
+	ClearChildren          bool
+	AddChildIDs            []int
+	RemoveChildIDs         []int
+	ClearTransactions      bool
+	AddTransactionIDs      []int
+	RemoveTransactionIDs   []int
+	ClearBudgets           bool
+	AddBudgetIDs           []int
+	RemoveBudgetIDs        []int
+	ClearRecurringBills    bool
+	AddRecurringBillIDs    []int
+	RemoveRecurringBillIDs []int
 }
 
 // Mutate applies the UpdateCategoryInput on the CategoryMutation builder.
@@ -202,6 +283,24 @@ func (i *UpdateCategoryInput) Mutate(m *CategoryMutation) {
 	if v := i.RemoveTransactionIDs; len(v) > 0 {
 		m.RemoveTransactionIDs(v...)
 	}
+	if i.ClearBudgets {
+		m.ClearBudgets()
+	}
+	if v := i.AddBudgetIDs; len(v) > 0 {
+		m.AddBudgetIDs(v...)
+	}
+	if v := i.RemoveBudgetIDs; len(v) > 0 {
+		m.RemoveBudgetIDs(v...)
+	}
+	if i.ClearRecurringBills {
+		m.ClearRecurringBills()
+	}
+	if v := i.AddRecurringBillIDs; len(v) > 0 {
+		m.AddRecurringBillIDs(v...)
+	}
+	if v := i.RemoveRecurringBillIDs; len(v) > 0 {
+		m.RemoveRecurringBillIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the UpdateCategoryInput on the CategoryUpdate builder.
@@ -218,13 +317,16 @@ func (c *CategoryUpdateOne) SetInput(i UpdateCategoryInput) *CategoryUpdateOne {
 
 // CreateHouseholdInput represents a mutation input for creating households.
 type CreateHouseholdInput struct {
-	Name           string
-	BaseCurrency   *string
-	CreatedAt      *time.Time
-	MemberIDs      []int
-	AccountIDs     []int
-	CategoryIDs    []int
-	TransactionIDs []int
+	Name             string
+	BaseCurrency     *string
+	CreatedAt        *time.Time
+	MemberIDs        []int
+	AccountIDs       []int
+	CategoryIDs      []int
+	TransactionIDs   []int
+	BudgetIDs        []int
+	TagIDs           []int
+	RecurringBillIDs []int
 }
 
 // Mutate applies the CreateHouseholdInput on the HouseholdMutation builder.
@@ -248,6 +350,15 @@ func (i *CreateHouseholdInput) Mutate(m *HouseholdMutation) {
 	if v := i.TransactionIDs; len(v) > 0 {
 		m.AddTransactionIDs(v...)
 	}
+	if v := i.BudgetIDs; len(v) > 0 {
+		m.AddBudgetIDs(v...)
+	}
+	if v := i.TagIDs; len(v) > 0 {
+		m.AddTagIDs(v...)
+	}
+	if v := i.RecurringBillIDs; len(v) > 0 {
+		m.AddRecurringBillIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the CreateHouseholdInput on the HouseholdCreate builder.
@@ -258,20 +369,29 @@ func (c *HouseholdCreate) SetInput(i CreateHouseholdInput) *HouseholdCreate {
 
 // UpdateHouseholdInput represents a mutation input for updating households.
 type UpdateHouseholdInput struct {
-	Name                 *string
-	BaseCurrency         *string
-	ClearMembers         bool
-	AddMemberIDs         []int
-	RemoveMemberIDs      []int
-	ClearAccounts        bool
-	AddAccountIDs        []int
-	RemoveAccountIDs     []int
-	ClearCategories      bool
-	AddCategoryIDs       []int
-	RemoveCategoryIDs    []int
-	ClearTransactions    bool
-	AddTransactionIDs    []int
-	RemoveTransactionIDs []int
+	Name                   *string
+	BaseCurrency           *string
+	ClearMembers           bool
+	AddMemberIDs           []int
+	RemoveMemberIDs        []int
+	ClearAccounts          bool
+	AddAccountIDs          []int
+	RemoveAccountIDs       []int
+	ClearCategories        bool
+	AddCategoryIDs         []int
+	RemoveCategoryIDs      []int
+	ClearTransactions      bool
+	AddTransactionIDs      []int
+	RemoveTransactionIDs   []int
+	ClearBudgets           bool
+	AddBudgetIDs           []int
+	RemoveBudgetIDs        []int
+	ClearTags              bool
+	AddTagIDs              []int
+	RemoveTagIDs           []int
+	ClearRecurringBills    bool
+	AddRecurringBillIDs    []int
+	RemoveRecurringBillIDs []int
 }
 
 // Mutate applies the UpdateHouseholdInput on the HouseholdMutation builder.
@@ -317,6 +437,33 @@ func (i *UpdateHouseholdInput) Mutate(m *HouseholdMutation) {
 	}
 	if v := i.RemoveTransactionIDs; len(v) > 0 {
 		m.RemoveTransactionIDs(v...)
+	}
+	if i.ClearBudgets {
+		m.ClearBudgets()
+	}
+	if v := i.AddBudgetIDs; len(v) > 0 {
+		m.AddBudgetIDs(v...)
+	}
+	if v := i.RemoveBudgetIDs; len(v) > 0 {
+		m.RemoveBudgetIDs(v...)
+	}
+	if i.ClearTags {
+		m.ClearTags()
+	}
+	if v := i.AddTagIDs; len(v) > 0 {
+		m.AddTagIDs(v...)
+	}
+	if v := i.RemoveTagIDs; len(v) > 0 {
+		m.RemoveTagIDs(v...)
+	}
+	if i.ClearRecurringBills {
+		m.ClearRecurringBills()
+	}
+	if v := i.AddRecurringBillIDs; len(v) > 0 {
+		m.AddRecurringBillIDs(v...)
+	}
+	if v := i.RemoveRecurringBillIDs; len(v) > 0 {
+		m.RemoveRecurringBillIDs(v...)
 	}
 }
 
@@ -390,6 +537,170 @@ func (c *HouseholdMemberUpdateOne) SetInput(i UpdateHouseholdMemberInput) *House
 	return c
 }
 
+// CreateRecurringBillInput represents a mutation input for creating recurringbills.
+type CreateRecurringBillInput struct {
+	Name        string
+	AmountCents int64
+	DueDay      int
+	Frequency   *recurringbill.Frequency
+	Status      *recurringbill.Status
+	CreatedAt   *time.Time
+	HouseholdID int
+	CategoryID  *int
+}
+
+// Mutate applies the CreateRecurringBillInput on the RecurringBillMutation builder.
+func (i *CreateRecurringBillInput) Mutate(m *RecurringBillMutation) {
+	m.SetName(i.Name)
+	m.SetAmountCents(i.AmountCents)
+	m.SetDueDay(i.DueDay)
+	if v := i.Frequency; v != nil {
+		m.SetFrequency(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+	if v := i.CategoryID; v != nil {
+		m.SetCategoryID(*v)
+	}
+}
+
+// SetInput applies the change-set in the CreateRecurringBillInput on the RecurringBillCreate builder.
+func (c *RecurringBillCreate) SetInput(i CreateRecurringBillInput) *RecurringBillCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateRecurringBillInput represents a mutation input for updating recurringbills.
+type UpdateRecurringBillInput struct {
+	Name          *string
+	AmountCents   *int64
+	DueDay        *int
+	Frequency     *recurringbill.Frequency
+	Status        *recurringbill.Status
+	HouseholdID   *int
+	ClearCategory bool
+	CategoryID    *int
+}
+
+// Mutate applies the UpdateRecurringBillInput on the RecurringBillMutation builder.
+func (i *UpdateRecurringBillInput) Mutate(m *RecurringBillMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.AmountCents; v != nil {
+		m.SetAmountCents(*v)
+	}
+	if v := i.DueDay; v != nil {
+		m.SetDueDay(*v)
+	}
+	if v := i.Frequency; v != nil {
+		m.SetFrequency(*v)
+	}
+	if v := i.Status; v != nil {
+		m.SetStatus(*v)
+	}
+	if v := i.HouseholdID; v != nil {
+		m.SetHouseholdID(*v)
+	}
+	if i.ClearCategory {
+		m.ClearCategory()
+	}
+	if v := i.CategoryID; v != nil {
+		m.SetCategoryID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateRecurringBillInput on the RecurringBillUpdate builder.
+func (c *RecurringBillUpdate) SetInput(i UpdateRecurringBillInput) *RecurringBillUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateRecurringBillInput on the RecurringBillUpdateOne builder.
+func (c *RecurringBillUpdateOne) SetInput(i UpdateRecurringBillInput) *RecurringBillUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateTagInput represents a mutation input for creating tags.
+type CreateTagInput struct {
+	Name           string
+	Color          *string
+	HouseholdID    int
+	TransactionIDs []int
+}
+
+// Mutate applies the CreateTagInput on the TagMutation builder.
+func (i *CreateTagInput) Mutate(m *TagMutation) {
+	m.SetName(i.Name)
+	if v := i.Color; v != nil {
+		m.SetColor(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+	if v := i.TransactionIDs; len(v) > 0 {
+		m.AddTransactionIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateTagInput on the TagCreate builder.
+func (c *TagCreate) SetInput(i CreateTagInput) *TagCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateTagInput represents a mutation input for updating tags.
+type UpdateTagInput struct {
+	Name                 *string
+	ClearColor           bool
+	Color                *string
+	HouseholdID          *int
+	ClearTransactions    bool
+	AddTransactionIDs    []int
+	RemoveTransactionIDs []int
+}
+
+// Mutate applies the UpdateTagInput on the TagMutation builder.
+func (i *UpdateTagInput) Mutate(m *TagMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if i.ClearColor {
+		m.ClearColor()
+	}
+	if v := i.Color; v != nil {
+		m.SetColor(*v)
+	}
+	if v := i.HouseholdID; v != nil {
+		m.SetHouseholdID(*v)
+	}
+	if i.ClearTransactions {
+		m.ClearTransactions()
+	}
+	if v := i.AddTransactionIDs; len(v) > 0 {
+		m.AddTransactionIDs(v...)
+	}
+	if v := i.RemoveTransactionIDs; len(v) > 0 {
+		m.RemoveTransactionIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateTagInput on the TagUpdate builder.
+func (c *TagUpdate) SetInput(i UpdateTagInput) *TagUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateTagInput on the TagUpdateOne builder.
+func (c *TagUpdateOne) SetInput(i UpdateTagInput) *TagUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
 // CreateTransactionInput represents a mutation input for creating transactions.
 type CreateTransactionInput struct {
 	Description string
@@ -400,6 +711,7 @@ type CreateTransactionInput struct {
 	CreatedByID int
 	EntryIDs    []int
 	CategoryID  *int
+	TagIDs      []int
 }
 
 // Mutate applies the CreateTransactionInput on the TransactionMutation builder.
@@ -419,6 +731,9 @@ func (i *CreateTransactionInput) Mutate(m *TransactionMutation) {
 	}
 	if v := i.CategoryID; v != nil {
 		m.SetCategoryID(*v)
+	}
+	if v := i.TagIDs; len(v) > 0 {
+		m.AddTagIDs(v...)
 	}
 }
 
@@ -440,6 +755,9 @@ type UpdateTransactionInput struct {
 	RemoveEntryIDs []int
 	ClearCategory  bool
 	CategoryID     *int
+	ClearTags      bool
+	AddTagIDs      []int
+	RemoveTagIDs   []int
 }
 
 // Mutate applies the UpdateTransactionInput on the TransactionMutation builder.
@@ -473,6 +791,15 @@ func (i *UpdateTransactionInput) Mutate(m *TransactionMutation) {
 	}
 	if v := i.CategoryID; v != nil {
 		m.SetCategoryID(*v)
+	}
+	if i.ClearTags {
+		m.ClearTags()
+	}
+	if v := i.AddTagIDs; len(v) > 0 {
+		m.AddTagIDs(v...)
+	}
+	if v := i.RemoveTagIDs; len(v) > 0 {
+		m.RemoveTagIDs(v...)
 	}
 }
 

@@ -12,10 +12,13 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
@@ -31,10 +34,13 @@ const (
 
 	// Node types.
 	TypeAccount          = "Account"
+	TypeBudget           = "Budget"
 	TypeCategory         = "Category"
 	TypeHousehold        = "Household"
 	TypeHouseholdMember  = "HouseholdMember"
 	TypePlaceholder      = "Placeholder"
+	TypeRecurringBill    = "RecurringBill"
+	TypeTag              = "Tag"
 	TypeTransaction      = "Transaction"
 	TypeTransactionEntry = "TransactionEntry"
 	TypeUser             = "User"
@@ -716,31 +722,633 @@ func (m *AccountMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Account edge %s", name)
 }
 
+// BudgetMutation represents an operation that mutates the Budget nodes in the graph.
+type BudgetMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	month            *string
+	amount_cents     *int64
+	addamount_cents  *int64
+	rollover         *bool
+	clearedFields    map[string]struct{}
+	household        *int
+	clearedhousehold bool
+	category         *int
+	clearedcategory  bool
+	done             bool
+	oldValue         func(context.Context) (*Budget, error)
+	predicates       []predicate.Budget
+}
+
+var _ ent.Mutation = (*BudgetMutation)(nil)
+
+// budgetOption allows management of the mutation configuration using functional options.
+type budgetOption func(*BudgetMutation)
+
+// newBudgetMutation creates new mutation for the Budget entity.
+func newBudgetMutation(c config, op Op, opts ...budgetOption) *BudgetMutation {
+	m := &BudgetMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBudget,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBudgetID sets the ID field of the mutation.
+func withBudgetID(id int) budgetOption {
+	return func(m *BudgetMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Budget
+		)
+		m.oldValue = func(ctx context.Context) (*Budget, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Budget.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBudget sets the old Budget of the mutation.
+func withBudget(node *Budget) budgetOption {
+	return func(m *BudgetMutation) {
+		m.oldValue = func(context.Context) (*Budget, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BudgetMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BudgetMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BudgetMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *BudgetMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Budget.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetMonth sets the "month" field.
+func (m *BudgetMutation) SetMonth(s string) {
+	m.month = &s
+}
+
+// Month returns the value of the "month" field in the mutation.
+func (m *BudgetMutation) Month() (r string, exists bool) {
+	v := m.month
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMonth returns the old "month" field's value of the Budget entity.
+// If the Budget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BudgetMutation) OldMonth(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMonth is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMonth requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMonth: %w", err)
+	}
+	return oldValue.Month, nil
+}
+
+// ResetMonth resets all changes to the "month" field.
+func (m *BudgetMutation) ResetMonth() {
+	m.month = nil
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (m *BudgetMutation) SetAmountCents(i int64) {
+	m.amount_cents = &i
+	m.addamount_cents = nil
+}
+
+// AmountCents returns the value of the "amount_cents" field in the mutation.
+func (m *BudgetMutation) AmountCents() (r int64, exists bool) {
+	v := m.amount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmountCents returns the old "amount_cents" field's value of the Budget entity.
+// If the Budget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BudgetMutation) OldAmountCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmountCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmountCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmountCents: %w", err)
+	}
+	return oldValue.AmountCents, nil
+}
+
+// AddAmountCents adds i to the "amount_cents" field.
+func (m *BudgetMutation) AddAmountCents(i int64) {
+	if m.addamount_cents != nil {
+		*m.addamount_cents += i
+	} else {
+		m.addamount_cents = &i
+	}
+}
+
+// AddedAmountCents returns the value that was added to the "amount_cents" field in this mutation.
+func (m *BudgetMutation) AddedAmountCents() (r int64, exists bool) {
+	v := m.addamount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmountCents resets all changes to the "amount_cents" field.
+func (m *BudgetMutation) ResetAmountCents() {
+	m.amount_cents = nil
+	m.addamount_cents = nil
+}
+
+// SetRollover sets the "rollover" field.
+func (m *BudgetMutation) SetRollover(b bool) {
+	m.rollover = &b
+}
+
+// Rollover returns the value of the "rollover" field in the mutation.
+func (m *BudgetMutation) Rollover() (r bool, exists bool) {
+	v := m.rollover
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRollover returns the old "rollover" field's value of the Budget entity.
+// If the Budget object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BudgetMutation) OldRollover(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRollover is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRollover requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRollover: %w", err)
+	}
+	return oldValue.Rollover, nil
+}
+
+// ResetRollover resets all changes to the "rollover" field.
+func (m *BudgetMutation) ResetRollover() {
+	m.rollover = nil
+}
+
+// SetHouseholdID sets the "household" edge to the Household entity by id.
+func (m *BudgetMutation) SetHouseholdID(id int) {
+	m.household = &id
+}
+
+// ClearHousehold clears the "household" edge to the Household entity.
+func (m *BudgetMutation) ClearHousehold() {
+	m.clearedhousehold = true
+}
+
+// HouseholdCleared reports if the "household" edge to the Household entity was cleared.
+func (m *BudgetMutation) HouseholdCleared() bool {
+	return m.clearedhousehold
+}
+
+// HouseholdID returns the "household" edge ID in the mutation.
+func (m *BudgetMutation) HouseholdID() (id int, exists bool) {
+	if m.household != nil {
+		return *m.household, true
+	}
+	return
+}
+
+// HouseholdIDs returns the "household" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// HouseholdID instead. It exists only for internal usage by the builders.
+func (m *BudgetMutation) HouseholdIDs() (ids []int) {
+	if id := m.household; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetHousehold resets all changes to the "household" edge.
+func (m *BudgetMutation) ResetHousehold() {
+	m.household = nil
+	m.clearedhousehold = false
+}
+
+// SetCategoryID sets the "category" edge to the Category entity by id.
+func (m *BudgetMutation) SetCategoryID(id int) {
+	m.category = &id
+}
+
+// ClearCategory clears the "category" edge to the Category entity.
+func (m *BudgetMutation) ClearCategory() {
+	m.clearedcategory = true
+}
+
+// CategoryCleared reports if the "category" edge to the Category entity was cleared.
+func (m *BudgetMutation) CategoryCleared() bool {
+	return m.clearedcategory
+}
+
+// CategoryID returns the "category" edge ID in the mutation.
+func (m *BudgetMutation) CategoryID() (id int, exists bool) {
+	if m.category != nil {
+		return *m.category, true
+	}
+	return
+}
+
+// CategoryIDs returns the "category" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CategoryID instead. It exists only for internal usage by the builders.
+func (m *BudgetMutation) CategoryIDs() (ids []int) {
+	if id := m.category; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCategory resets all changes to the "category" edge.
+func (m *BudgetMutation) ResetCategory() {
+	m.category = nil
+	m.clearedcategory = false
+}
+
+// Where appends a list predicates to the BudgetMutation builder.
+func (m *BudgetMutation) Where(ps ...predicate.Budget) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the BudgetMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BudgetMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Budget, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *BudgetMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BudgetMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Budget).
+func (m *BudgetMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BudgetMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.month != nil {
+		fields = append(fields, budget.FieldMonth)
+	}
+	if m.amount_cents != nil {
+		fields = append(fields, budget.FieldAmountCents)
+	}
+	if m.rollover != nil {
+		fields = append(fields, budget.FieldRollover)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BudgetMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case budget.FieldMonth:
+		return m.Month()
+	case budget.FieldAmountCents:
+		return m.AmountCents()
+	case budget.FieldRollover:
+		return m.Rollover()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BudgetMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case budget.FieldMonth:
+		return m.OldMonth(ctx)
+	case budget.FieldAmountCents:
+		return m.OldAmountCents(ctx)
+	case budget.FieldRollover:
+		return m.OldRollover(ctx)
+	}
+	return nil, fmt.Errorf("unknown Budget field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BudgetMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case budget.FieldMonth:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMonth(v)
+		return nil
+	case budget.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmountCents(v)
+		return nil
+	case budget.FieldRollover:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRollover(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Budget field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BudgetMutation) AddedFields() []string {
+	var fields []string
+	if m.addamount_cents != nil {
+		fields = append(fields, budget.FieldAmountCents)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BudgetMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case budget.FieldAmountCents:
+		return m.AddedAmountCents()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BudgetMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case budget.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmountCents(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Budget numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BudgetMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BudgetMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BudgetMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Budget nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BudgetMutation) ResetField(name string) error {
+	switch name {
+	case budget.FieldMonth:
+		m.ResetMonth()
+		return nil
+	case budget.FieldAmountCents:
+		m.ResetAmountCents()
+		return nil
+	case budget.FieldRollover:
+		m.ResetRollover()
+		return nil
+	}
+	return fmt.Errorf("unknown Budget field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BudgetMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.household != nil {
+		edges = append(edges, budget.EdgeHousehold)
+	}
+	if m.category != nil {
+		edges = append(edges, budget.EdgeCategory)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BudgetMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case budget.EdgeHousehold:
+		if id := m.household; id != nil {
+			return []ent.Value{*id}
+		}
+	case budget.EdgeCategory:
+		if id := m.category; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BudgetMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BudgetMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BudgetMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedhousehold {
+		edges = append(edges, budget.EdgeHousehold)
+	}
+	if m.clearedcategory {
+		edges = append(edges, budget.EdgeCategory)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BudgetMutation) EdgeCleared(name string) bool {
+	switch name {
+	case budget.EdgeHousehold:
+		return m.clearedhousehold
+	case budget.EdgeCategory:
+		return m.clearedcategory
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BudgetMutation) ClearEdge(name string) error {
+	switch name {
+	case budget.EdgeHousehold:
+		m.ClearHousehold()
+		return nil
+	case budget.EdgeCategory:
+		m.ClearCategory()
+		return nil
+	}
+	return fmt.Errorf("unknown Budget unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BudgetMutation) ResetEdge(name string) error {
+	switch name {
+	case budget.EdgeHousehold:
+		m.ResetHousehold()
+		return nil
+	case budget.EdgeCategory:
+		m.ResetCategory()
+		return nil
+	}
+	return fmt.Errorf("unknown Budget edge %s", name)
+}
+
 // CategoryMutation represents an operation that mutates the Category nodes in the graph.
 type CategoryMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	name                *string
-	icon                *string
-	color               *string
-	is_system           *bool
-	created_at          *time.Time
-	clearedFields       map[string]struct{}
-	household           *int
-	clearedhousehold    bool
-	parent              *int
-	clearedparent       bool
-	children            map[int]struct{}
-	removedchildren     map[int]struct{}
-	clearedchildren     bool
-	transactions        map[int]struct{}
-	removedtransactions map[int]struct{}
-	clearedtransactions bool
-	done                bool
-	oldValue            func(context.Context) (*Category, error)
-	predicates          []predicate.Category
+	op                     Op
+	typ                    string
+	id                     *int
+	name                   *string
+	icon                   *string
+	color                  *string
+	is_system              *bool
+	created_at             *time.Time
+	clearedFields          map[string]struct{}
+	household              *int
+	clearedhousehold       bool
+	parent                 *int
+	clearedparent          bool
+	children               map[int]struct{}
+	removedchildren        map[int]struct{}
+	clearedchildren        bool
+	transactions           map[int]struct{}
+	removedtransactions    map[int]struct{}
+	clearedtransactions    bool
+	budgets                map[int]struct{}
+	removedbudgets         map[int]struct{}
+	clearedbudgets         bool
+	recurring_bills        map[int]struct{}
+	removedrecurring_bills map[int]struct{}
+	clearedrecurring_bills bool
+	done                   bool
+	oldValue               func(context.Context) (*Category, error)
+	predicates             []predicate.Category
 }
 
 var _ ent.Mutation = (*CategoryMutation)(nil)
@@ -1233,6 +1841,114 @@ func (m *CategoryMutation) ResetTransactions() {
 	m.removedtransactions = nil
 }
 
+// AddBudgetIDs adds the "budgets" edge to the Budget entity by ids.
+func (m *CategoryMutation) AddBudgetIDs(ids ...int) {
+	if m.budgets == nil {
+		m.budgets = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.budgets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearBudgets clears the "budgets" edge to the Budget entity.
+func (m *CategoryMutation) ClearBudgets() {
+	m.clearedbudgets = true
+}
+
+// BudgetsCleared reports if the "budgets" edge to the Budget entity was cleared.
+func (m *CategoryMutation) BudgetsCleared() bool {
+	return m.clearedbudgets
+}
+
+// RemoveBudgetIDs removes the "budgets" edge to the Budget entity by IDs.
+func (m *CategoryMutation) RemoveBudgetIDs(ids ...int) {
+	if m.removedbudgets == nil {
+		m.removedbudgets = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.budgets, ids[i])
+		m.removedbudgets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedBudgets returns the removed IDs of the "budgets" edge to the Budget entity.
+func (m *CategoryMutation) RemovedBudgetsIDs() (ids []int) {
+	for id := range m.removedbudgets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// BudgetsIDs returns the "budgets" edge IDs in the mutation.
+func (m *CategoryMutation) BudgetsIDs() (ids []int) {
+	for id := range m.budgets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetBudgets resets all changes to the "budgets" edge.
+func (m *CategoryMutation) ResetBudgets() {
+	m.budgets = nil
+	m.clearedbudgets = false
+	m.removedbudgets = nil
+}
+
+// AddRecurringBillIDs adds the "recurring_bills" edge to the RecurringBill entity by ids.
+func (m *CategoryMutation) AddRecurringBillIDs(ids ...int) {
+	if m.recurring_bills == nil {
+		m.recurring_bills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.recurring_bills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRecurringBills clears the "recurring_bills" edge to the RecurringBill entity.
+func (m *CategoryMutation) ClearRecurringBills() {
+	m.clearedrecurring_bills = true
+}
+
+// RecurringBillsCleared reports if the "recurring_bills" edge to the RecurringBill entity was cleared.
+func (m *CategoryMutation) RecurringBillsCleared() bool {
+	return m.clearedrecurring_bills
+}
+
+// RemoveRecurringBillIDs removes the "recurring_bills" edge to the RecurringBill entity by IDs.
+func (m *CategoryMutation) RemoveRecurringBillIDs(ids ...int) {
+	if m.removedrecurring_bills == nil {
+		m.removedrecurring_bills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.recurring_bills, ids[i])
+		m.removedrecurring_bills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRecurringBills returns the removed IDs of the "recurring_bills" edge to the RecurringBill entity.
+func (m *CategoryMutation) RemovedRecurringBillsIDs() (ids []int) {
+	for id := range m.removedrecurring_bills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RecurringBillsIDs returns the "recurring_bills" edge IDs in the mutation.
+func (m *CategoryMutation) RecurringBillsIDs() (ids []int) {
+	for id := range m.recurring_bills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRecurringBills resets all changes to the "recurring_bills" edge.
+func (m *CategoryMutation) ResetRecurringBills() {
+	m.recurring_bills = nil
+	m.clearedrecurring_bills = false
+	m.removedrecurring_bills = nil
+}
+
 // Where appends a list predicates to the CategoryMutation builder.
 func (m *CategoryMutation) Where(ps ...predicate.Category) {
 	m.predicates = append(m.predicates, ps...)
@@ -1449,7 +2165,7 @@ func (m *CategoryMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *CategoryMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 6)
 	if m.household != nil {
 		edges = append(edges, category.EdgeHousehold)
 	}
@@ -1461,6 +2177,12 @@ func (m *CategoryMutation) AddedEdges() []string {
 	}
 	if m.transactions != nil {
 		edges = append(edges, category.EdgeTransactions)
+	}
+	if m.budgets != nil {
+		edges = append(edges, category.EdgeBudgets)
+	}
+	if m.recurring_bills != nil {
+		edges = append(edges, category.EdgeRecurringBills)
 	}
 	return edges
 }
@@ -1489,18 +2211,36 @@ func (m *CategoryMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case category.EdgeBudgets:
+		ids := make([]ent.Value, 0, len(m.budgets))
+		for id := range m.budgets {
+			ids = append(ids, id)
+		}
+		return ids
+	case category.EdgeRecurringBills:
+		ids := make([]ent.Value, 0, len(m.recurring_bills))
+		for id := range m.recurring_bills {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CategoryMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 6)
 	if m.removedchildren != nil {
 		edges = append(edges, category.EdgeChildren)
 	}
 	if m.removedtransactions != nil {
 		edges = append(edges, category.EdgeTransactions)
+	}
+	if m.removedbudgets != nil {
+		edges = append(edges, category.EdgeBudgets)
+	}
+	if m.removedrecurring_bills != nil {
+		edges = append(edges, category.EdgeRecurringBills)
 	}
 	return edges
 }
@@ -1521,13 +2261,25 @@ func (m *CategoryMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case category.EdgeBudgets:
+		ids := make([]ent.Value, 0, len(m.removedbudgets))
+		for id := range m.removedbudgets {
+			ids = append(ids, id)
+		}
+		return ids
+	case category.EdgeRecurringBills:
+		ids := make([]ent.Value, 0, len(m.removedrecurring_bills))
+		for id := range m.removedrecurring_bills {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *CategoryMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 6)
 	if m.clearedhousehold {
 		edges = append(edges, category.EdgeHousehold)
 	}
@@ -1539,6 +2291,12 @@ func (m *CategoryMutation) ClearedEdges() []string {
 	}
 	if m.clearedtransactions {
 		edges = append(edges, category.EdgeTransactions)
+	}
+	if m.clearedbudgets {
+		edges = append(edges, category.EdgeBudgets)
+	}
+	if m.clearedrecurring_bills {
+		edges = append(edges, category.EdgeRecurringBills)
 	}
 	return edges
 }
@@ -1555,6 +2313,10 @@ func (m *CategoryMutation) EdgeCleared(name string) bool {
 		return m.clearedchildren
 	case category.EdgeTransactions:
 		return m.clearedtransactions
+	case category.EdgeBudgets:
+		return m.clearedbudgets
+	case category.EdgeRecurringBills:
+		return m.clearedrecurring_bills
 	}
 	return false
 }
@@ -1589,6 +2351,12 @@ func (m *CategoryMutation) ResetEdge(name string) error {
 	case category.EdgeTransactions:
 		m.ResetTransactions()
 		return nil
+	case category.EdgeBudgets:
+		m.ResetBudgets()
+		return nil
+	case category.EdgeRecurringBills:
+		m.ResetRecurringBills()
+		return nil
 	}
 	return fmt.Errorf("unknown Category edge %s", name)
 }
@@ -1596,28 +2364,37 @@ func (m *CategoryMutation) ResetEdge(name string) error {
 // HouseholdMutation represents an operation that mutates the Household nodes in the graph.
 type HouseholdMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *int
-	name                *string
-	base_currency       *string
-	created_at          *time.Time
-	clearedFields       map[string]struct{}
-	members             map[int]struct{}
-	removedmembers      map[int]struct{}
-	clearedmembers      bool
-	accounts            map[int]struct{}
-	removedaccounts     map[int]struct{}
-	clearedaccounts     bool
-	categories          map[int]struct{}
-	removedcategories   map[int]struct{}
-	clearedcategories   bool
-	transactions        map[int]struct{}
-	removedtransactions map[int]struct{}
-	clearedtransactions bool
-	done                bool
-	oldValue            func(context.Context) (*Household, error)
-	predicates          []predicate.Household
+	op                     Op
+	typ                    string
+	id                     *int
+	name                   *string
+	base_currency          *string
+	created_at             *time.Time
+	clearedFields          map[string]struct{}
+	members                map[int]struct{}
+	removedmembers         map[int]struct{}
+	clearedmembers         bool
+	accounts               map[int]struct{}
+	removedaccounts        map[int]struct{}
+	clearedaccounts        bool
+	categories             map[int]struct{}
+	removedcategories      map[int]struct{}
+	clearedcategories      bool
+	transactions           map[int]struct{}
+	removedtransactions    map[int]struct{}
+	clearedtransactions    bool
+	budgets                map[int]struct{}
+	removedbudgets         map[int]struct{}
+	clearedbudgets         bool
+	tags                   map[int]struct{}
+	removedtags            map[int]struct{}
+	clearedtags            bool
+	recurring_bills        map[int]struct{}
+	removedrecurring_bills map[int]struct{}
+	clearedrecurring_bills bool
+	done                   bool
+	oldValue               func(context.Context) (*Household, error)
+	predicates             []predicate.Household
 }
 
 var _ ent.Mutation = (*HouseholdMutation)(nil)
@@ -2042,6 +2819,168 @@ func (m *HouseholdMutation) ResetTransactions() {
 	m.removedtransactions = nil
 }
 
+// AddBudgetIDs adds the "budgets" edge to the Budget entity by ids.
+func (m *HouseholdMutation) AddBudgetIDs(ids ...int) {
+	if m.budgets == nil {
+		m.budgets = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.budgets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearBudgets clears the "budgets" edge to the Budget entity.
+func (m *HouseholdMutation) ClearBudgets() {
+	m.clearedbudgets = true
+}
+
+// BudgetsCleared reports if the "budgets" edge to the Budget entity was cleared.
+func (m *HouseholdMutation) BudgetsCleared() bool {
+	return m.clearedbudgets
+}
+
+// RemoveBudgetIDs removes the "budgets" edge to the Budget entity by IDs.
+func (m *HouseholdMutation) RemoveBudgetIDs(ids ...int) {
+	if m.removedbudgets == nil {
+		m.removedbudgets = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.budgets, ids[i])
+		m.removedbudgets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedBudgets returns the removed IDs of the "budgets" edge to the Budget entity.
+func (m *HouseholdMutation) RemovedBudgetsIDs() (ids []int) {
+	for id := range m.removedbudgets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// BudgetsIDs returns the "budgets" edge IDs in the mutation.
+func (m *HouseholdMutation) BudgetsIDs() (ids []int) {
+	for id := range m.budgets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetBudgets resets all changes to the "budgets" edge.
+func (m *HouseholdMutation) ResetBudgets() {
+	m.budgets = nil
+	m.clearedbudgets = false
+	m.removedbudgets = nil
+}
+
+// AddTagIDs adds the "tags" edge to the Tag entity by ids.
+func (m *HouseholdMutation) AddTagIDs(ids ...int) {
+	if m.tags == nil {
+		m.tags = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.tags[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTags clears the "tags" edge to the Tag entity.
+func (m *HouseholdMutation) ClearTags() {
+	m.clearedtags = true
+}
+
+// TagsCleared reports if the "tags" edge to the Tag entity was cleared.
+func (m *HouseholdMutation) TagsCleared() bool {
+	return m.clearedtags
+}
+
+// RemoveTagIDs removes the "tags" edge to the Tag entity by IDs.
+func (m *HouseholdMutation) RemoveTagIDs(ids ...int) {
+	if m.removedtags == nil {
+		m.removedtags = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.tags, ids[i])
+		m.removedtags[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTags returns the removed IDs of the "tags" edge to the Tag entity.
+func (m *HouseholdMutation) RemovedTagsIDs() (ids []int) {
+	for id := range m.removedtags {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TagsIDs returns the "tags" edge IDs in the mutation.
+func (m *HouseholdMutation) TagsIDs() (ids []int) {
+	for id := range m.tags {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTags resets all changes to the "tags" edge.
+func (m *HouseholdMutation) ResetTags() {
+	m.tags = nil
+	m.clearedtags = false
+	m.removedtags = nil
+}
+
+// AddRecurringBillIDs adds the "recurring_bills" edge to the RecurringBill entity by ids.
+func (m *HouseholdMutation) AddRecurringBillIDs(ids ...int) {
+	if m.recurring_bills == nil {
+		m.recurring_bills = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.recurring_bills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRecurringBills clears the "recurring_bills" edge to the RecurringBill entity.
+func (m *HouseholdMutation) ClearRecurringBills() {
+	m.clearedrecurring_bills = true
+}
+
+// RecurringBillsCleared reports if the "recurring_bills" edge to the RecurringBill entity was cleared.
+func (m *HouseholdMutation) RecurringBillsCleared() bool {
+	return m.clearedrecurring_bills
+}
+
+// RemoveRecurringBillIDs removes the "recurring_bills" edge to the RecurringBill entity by IDs.
+func (m *HouseholdMutation) RemoveRecurringBillIDs(ids ...int) {
+	if m.removedrecurring_bills == nil {
+		m.removedrecurring_bills = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.recurring_bills, ids[i])
+		m.removedrecurring_bills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRecurringBills returns the removed IDs of the "recurring_bills" edge to the RecurringBill entity.
+func (m *HouseholdMutation) RemovedRecurringBillsIDs() (ids []int) {
+	for id := range m.removedrecurring_bills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RecurringBillsIDs returns the "recurring_bills" edge IDs in the mutation.
+func (m *HouseholdMutation) RecurringBillsIDs() (ids []int) {
+	for id := range m.recurring_bills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRecurringBills resets all changes to the "recurring_bills" edge.
+func (m *HouseholdMutation) ResetRecurringBills() {
+	m.recurring_bills = nil
+	m.clearedrecurring_bills = false
+	m.removedrecurring_bills = nil
+}
+
 // Where appends a list predicates to the HouseholdMutation builder.
 func (m *HouseholdMutation) Where(ps ...predicate.Household) {
 	m.predicates = append(m.predicates, ps...)
@@ -2209,7 +3148,7 @@ func (m *HouseholdMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *HouseholdMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 7)
 	if m.members != nil {
 		edges = append(edges, household.EdgeMembers)
 	}
@@ -2221,6 +3160,15 @@ func (m *HouseholdMutation) AddedEdges() []string {
 	}
 	if m.transactions != nil {
 		edges = append(edges, household.EdgeTransactions)
+	}
+	if m.budgets != nil {
+		edges = append(edges, household.EdgeBudgets)
+	}
+	if m.tags != nil {
+		edges = append(edges, household.EdgeTags)
+	}
+	if m.recurring_bills != nil {
+		edges = append(edges, household.EdgeRecurringBills)
 	}
 	return edges
 }
@@ -2253,13 +3201,31 @@ func (m *HouseholdMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case household.EdgeBudgets:
+		ids := make([]ent.Value, 0, len(m.budgets))
+		for id := range m.budgets {
+			ids = append(ids, id)
+		}
+		return ids
+	case household.EdgeTags:
+		ids := make([]ent.Value, 0, len(m.tags))
+		for id := range m.tags {
+			ids = append(ids, id)
+		}
+		return ids
+	case household.EdgeRecurringBills:
+		ids := make([]ent.Value, 0, len(m.recurring_bills))
+		for id := range m.recurring_bills {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *HouseholdMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 7)
 	if m.removedmembers != nil {
 		edges = append(edges, household.EdgeMembers)
 	}
@@ -2271,6 +3237,15 @@ func (m *HouseholdMutation) RemovedEdges() []string {
 	}
 	if m.removedtransactions != nil {
 		edges = append(edges, household.EdgeTransactions)
+	}
+	if m.removedbudgets != nil {
+		edges = append(edges, household.EdgeBudgets)
+	}
+	if m.removedtags != nil {
+		edges = append(edges, household.EdgeTags)
+	}
+	if m.removedrecurring_bills != nil {
+		edges = append(edges, household.EdgeRecurringBills)
 	}
 	return edges
 }
@@ -2303,13 +3278,31 @@ func (m *HouseholdMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case household.EdgeBudgets:
+		ids := make([]ent.Value, 0, len(m.removedbudgets))
+		for id := range m.removedbudgets {
+			ids = append(ids, id)
+		}
+		return ids
+	case household.EdgeTags:
+		ids := make([]ent.Value, 0, len(m.removedtags))
+		for id := range m.removedtags {
+			ids = append(ids, id)
+		}
+		return ids
+	case household.EdgeRecurringBills:
+		ids := make([]ent.Value, 0, len(m.removedrecurring_bills))
+		for id := range m.removedrecurring_bills {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *HouseholdMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 7)
 	if m.clearedmembers {
 		edges = append(edges, household.EdgeMembers)
 	}
@@ -2321,6 +3314,15 @@ func (m *HouseholdMutation) ClearedEdges() []string {
 	}
 	if m.clearedtransactions {
 		edges = append(edges, household.EdgeTransactions)
+	}
+	if m.clearedbudgets {
+		edges = append(edges, household.EdgeBudgets)
+	}
+	if m.clearedtags {
+		edges = append(edges, household.EdgeTags)
+	}
+	if m.clearedrecurring_bills {
+		edges = append(edges, household.EdgeRecurringBills)
 	}
 	return edges
 }
@@ -2337,6 +3339,12 @@ func (m *HouseholdMutation) EdgeCleared(name string) bool {
 		return m.clearedcategories
 	case household.EdgeTransactions:
 		return m.clearedtransactions
+	case household.EdgeBudgets:
+		return m.clearedbudgets
+	case household.EdgeTags:
+		return m.clearedtags
+	case household.EdgeRecurringBills:
+		return m.clearedrecurring_bills
 	}
 	return false
 }
@@ -2364,6 +3372,15 @@ func (m *HouseholdMutation) ResetEdge(name string) error {
 		return nil
 	case household.EdgeTransactions:
 		m.ResetTransactions()
+		return nil
+	case household.EdgeBudgets:
+		m.ResetBudgets()
+		return nil
+	case household.EdgeTags:
+		m.ResetTags()
+		return nil
+	case household.EdgeRecurringBills:
+		m.ResetRecurringBills()
 		return nil
 	}
 	return fmt.Errorf("unknown Household edge %s", name)
@@ -3139,6 +4156,1351 @@ func (m *PlaceholderMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Placeholder edge %s", name)
 }
 
+// RecurringBillMutation represents an operation that mutates the RecurringBill nodes in the graph.
+type RecurringBillMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	name             *string
+	amount_cents     *int64
+	addamount_cents  *int64
+	due_day          *int
+	adddue_day       *int
+	frequency        *recurringbill.Frequency
+	status           *recurringbill.Status
+	created_at       *time.Time
+	clearedFields    map[string]struct{}
+	household        *int
+	clearedhousehold bool
+	category         *int
+	clearedcategory  bool
+	done             bool
+	oldValue         func(context.Context) (*RecurringBill, error)
+	predicates       []predicate.RecurringBill
+}
+
+var _ ent.Mutation = (*RecurringBillMutation)(nil)
+
+// recurringbillOption allows management of the mutation configuration using functional options.
+type recurringbillOption func(*RecurringBillMutation)
+
+// newRecurringBillMutation creates new mutation for the RecurringBill entity.
+func newRecurringBillMutation(c config, op Op, opts ...recurringbillOption) *RecurringBillMutation {
+	m := &RecurringBillMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeRecurringBill,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withRecurringBillID sets the ID field of the mutation.
+func withRecurringBillID(id int) recurringbillOption {
+	return func(m *RecurringBillMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *RecurringBill
+		)
+		m.oldValue = func(ctx context.Context) (*RecurringBill, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().RecurringBill.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRecurringBill sets the old RecurringBill of the mutation.
+func withRecurringBill(node *RecurringBill) recurringbillOption {
+	return func(m *RecurringBillMutation) {
+		m.oldValue = func(context.Context) (*RecurringBill, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RecurringBillMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RecurringBillMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RecurringBillMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RecurringBillMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().RecurringBill.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *RecurringBillMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *RecurringBillMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the RecurringBill entity.
+// If the RecurringBill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RecurringBillMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *RecurringBillMutation) ResetName() {
+	m.name = nil
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (m *RecurringBillMutation) SetAmountCents(i int64) {
+	m.amount_cents = &i
+	m.addamount_cents = nil
+}
+
+// AmountCents returns the value of the "amount_cents" field in the mutation.
+func (m *RecurringBillMutation) AmountCents() (r int64, exists bool) {
+	v := m.amount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmountCents returns the old "amount_cents" field's value of the RecurringBill entity.
+// If the RecurringBill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RecurringBillMutation) OldAmountCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmountCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmountCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmountCents: %w", err)
+	}
+	return oldValue.AmountCents, nil
+}
+
+// AddAmountCents adds i to the "amount_cents" field.
+func (m *RecurringBillMutation) AddAmountCents(i int64) {
+	if m.addamount_cents != nil {
+		*m.addamount_cents += i
+	} else {
+		m.addamount_cents = &i
+	}
+}
+
+// AddedAmountCents returns the value that was added to the "amount_cents" field in this mutation.
+func (m *RecurringBillMutation) AddedAmountCents() (r int64, exists bool) {
+	v := m.addamount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmountCents resets all changes to the "amount_cents" field.
+func (m *RecurringBillMutation) ResetAmountCents() {
+	m.amount_cents = nil
+	m.addamount_cents = nil
+}
+
+// SetDueDay sets the "due_day" field.
+func (m *RecurringBillMutation) SetDueDay(i int) {
+	m.due_day = &i
+	m.adddue_day = nil
+}
+
+// DueDay returns the value of the "due_day" field in the mutation.
+func (m *RecurringBillMutation) DueDay() (r int, exists bool) {
+	v := m.due_day
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDueDay returns the old "due_day" field's value of the RecurringBill entity.
+// If the RecurringBill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RecurringBillMutation) OldDueDay(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDueDay is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDueDay requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDueDay: %w", err)
+	}
+	return oldValue.DueDay, nil
+}
+
+// AddDueDay adds i to the "due_day" field.
+func (m *RecurringBillMutation) AddDueDay(i int) {
+	if m.adddue_day != nil {
+		*m.adddue_day += i
+	} else {
+		m.adddue_day = &i
+	}
+}
+
+// AddedDueDay returns the value that was added to the "due_day" field in this mutation.
+func (m *RecurringBillMutation) AddedDueDay() (r int, exists bool) {
+	v := m.adddue_day
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDueDay resets all changes to the "due_day" field.
+func (m *RecurringBillMutation) ResetDueDay() {
+	m.due_day = nil
+	m.adddue_day = nil
+}
+
+// SetFrequency sets the "frequency" field.
+func (m *RecurringBillMutation) SetFrequency(r recurringbill.Frequency) {
+	m.frequency = &r
+}
+
+// Frequency returns the value of the "frequency" field in the mutation.
+func (m *RecurringBillMutation) Frequency() (r recurringbill.Frequency, exists bool) {
+	v := m.frequency
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFrequency returns the old "frequency" field's value of the RecurringBill entity.
+// If the RecurringBill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RecurringBillMutation) OldFrequency(ctx context.Context) (v recurringbill.Frequency, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFrequency is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFrequency requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFrequency: %w", err)
+	}
+	return oldValue.Frequency, nil
+}
+
+// ResetFrequency resets all changes to the "frequency" field.
+func (m *RecurringBillMutation) ResetFrequency() {
+	m.frequency = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *RecurringBillMutation) SetStatus(r recurringbill.Status) {
+	m.status = &r
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *RecurringBillMutation) Status() (r recurringbill.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the RecurringBill entity.
+// If the RecurringBill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RecurringBillMutation) OldStatus(ctx context.Context) (v recurringbill.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *RecurringBillMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *RecurringBillMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *RecurringBillMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the RecurringBill entity.
+// If the RecurringBill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RecurringBillMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *RecurringBillMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetHouseholdID sets the "household" edge to the Household entity by id.
+func (m *RecurringBillMutation) SetHouseholdID(id int) {
+	m.household = &id
+}
+
+// ClearHousehold clears the "household" edge to the Household entity.
+func (m *RecurringBillMutation) ClearHousehold() {
+	m.clearedhousehold = true
+}
+
+// HouseholdCleared reports if the "household" edge to the Household entity was cleared.
+func (m *RecurringBillMutation) HouseholdCleared() bool {
+	return m.clearedhousehold
+}
+
+// HouseholdID returns the "household" edge ID in the mutation.
+func (m *RecurringBillMutation) HouseholdID() (id int, exists bool) {
+	if m.household != nil {
+		return *m.household, true
+	}
+	return
+}
+
+// HouseholdIDs returns the "household" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// HouseholdID instead. It exists only for internal usage by the builders.
+func (m *RecurringBillMutation) HouseholdIDs() (ids []int) {
+	if id := m.household; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetHousehold resets all changes to the "household" edge.
+func (m *RecurringBillMutation) ResetHousehold() {
+	m.household = nil
+	m.clearedhousehold = false
+}
+
+// SetCategoryID sets the "category" edge to the Category entity by id.
+func (m *RecurringBillMutation) SetCategoryID(id int) {
+	m.category = &id
+}
+
+// ClearCategory clears the "category" edge to the Category entity.
+func (m *RecurringBillMutation) ClearCategory() {
+	m.clearedcategory = true
+}
+
+// CategoryCleared reports if the "category" edge to the Category entity was cleared.
+func (m *RecurringBillMutation) CategoryCleared() bool {
+	return m.clearedcategory
+}
+
+// CategoryID returns the "category" edge ID in the mutation.
+func (m *RecurringBillMutation) CategoryID() (id int, exists bool) {
+	if m.category != nil {
+		return *m.category, true
+	}
+	return
+}
+
+// CategoryIDs returns the "category" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CategoryID instead. It exists only for internal usage by the builders.
+func (m *RecurringBillMutation) CategoryIDs() (ids []int) {
+	if id := m.category; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCategory resets all changes to the "category" edge.
+func (m *RecurringBillMutation) ResetCategory() {
+	m.category = nil
+	m.clearedcategory = false
+}
+
+// Where appends a list predicates to the RecurringBillMutation builder.
+func (m *RecurringBillMutation) Where(ps ...predicate.RecurringBill) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the RecurringBillMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *RecurringBillMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.RecurringBill, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *RecurringBillMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *RecurringBillMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (RecurringBill).
+func (m *RecurringBillMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *RecurringBillMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.name != nil {
+		fields = append(fields, recurringbill.FieldName)
+	}
+	if m.amount_cents != nil {
+		fields = append(fields, recurringbill.FieldAmountCents)
+	}
+	if m.due_day != nil {
+		fields = append(fields, recurringbill.FieldDueDay)
+	}
+	if m.frequency != nil {
+		fields = append(fields, recurringbill.FieldFrequency)
+	}
+	if m.status != nil {
+		fields = append(fields, recurringbill.FieldStatus)
+	}
+	if m.created_at != nil {
+		fields = append(fields, recurringbill.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *RecurringBillMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case recurringbill.FieldName:
+		return m.Name()
+	case recurringbill.FieldAmountCents:
+		return m.AmountCents()
+	case recurringbill.FieldDueDay:
+		return m.DueDay()
+	case recurringbill.FieldFrequency:
+		return m.Frequency()
+	case recurringbill.FieldStatus:
+		return m.Status()
+	case recurringbill.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RecurringBillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case recurringbill.FieldName:
+		return m.OldName(ctx)
+	case recurringbill.FieldAmountCents:
+		return m.OldAmountCents(ctx)
+	case recurringbill.FieldDueDay:
+		return m.OldDueDay(ctx)
+	case recurringbill.FieldFrequency:
+		return m.OldFrequency(ctx)
+	case recurringbill.FieldStatus:
+		return m.OldStatus(ctx)
+	case recurringbill.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown RecurringBill field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RecurringBillMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case recurringbill.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case recurringbill.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmountCents(v)
+		return nil
+	case recurringbill.FieldDueDay:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDueDay(v)
+		return nil
+	case recurringbill.FieldFrequency:
+		v, ok := value.(recurringbill.Frequency)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFrequency(v)
+		return nil
+	case recurringbill.FieldStatus:
+		v, ok := value.(recurringbill.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case recurringbill.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RecurringBill field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *RecurringBillMutation) AddedFields() []string {
+	var fields []string
+	if m.addamount_cents != nil {
+		fields = append(fields, recurringbill.FieldAmountCents)
+	}
+	if m.adddue_day != nil {
+		fields = append(fields, recurringbill.FieldDueDay)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *RecurringBillMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case recurringbill.FieldAmountCents:
+		return m.AddedAmountCents()
+	case recurringbill.FieldDueDay:
+		return m.AddedDueDay()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RecurringBillMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case recurringbill.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmountCents(v)
+		return nil
+	case recurringbill.FieldDueDay:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDueDay(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RecurringBill numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *RecurringBillMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *RecurringBillMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *RecurringBillMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown RecurringBill nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *RecurringBillMutation) ResetField(name string) error {
+	switch name {
+	case recurringbill.FieldName:
+		m.ResetName()
+		return nil
+	case recurringbill.FieldAmountCents:
+		m.ResetAmountCents()
+		return nil
+	case recurringbill.FieldDueDay:
+		m.ResetDueDay()
+		return nil
+	case recurringbill.FieldFrequency:
+		m.ResetFrequency()
+		return nil
+	case recurringbill.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case recurringbill.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown RecurringBill field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *RecurringBillMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.household != nil {
+		edges = append(edges, recurringbill.EdgeHousehold)
+	}
+	if m.category != nil {
+		edges = append(edges, recurringbill.EdgeCategory)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *RecurringBillMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case recurringbill.EdgeHousehold:
+		if id := m.household; id != nil {
+			return []ent.Value{*id}
+		}
+	case recurringbill.EdgeCategory:
+		if id := m.category; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *RecurringBillMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *RecurringBillMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *RecurringBillMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedhousehold {
+		edges = append(edges, recurringbill.EdgeHousehold)
+	}
+	if m.clearedcategory {
+		edges = append(edges, recurringbill.EdgeCategory)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *RecurringBillMutation) EdgeCleared(name string) bool {
+	switch name {
+	case recurringbill.EdgeHousehold:
+		return m.clearedhousehold
+	case recurringbill.EdgeCategory:
+		return m.clearedcategory
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *RecurringBillMutation) ClearEdge(name string) error {
+	switch name {
+	case recurringbill.EdgeHousehold:
+		m.ClearHousehold()
+		return nil
+	case recurringbill.EdgeCategory:
+		m.ClearCategory()
+		return nil
+	}
+	return fmt.Errorf("unknown RecurringBill unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *RecurringBillMutation) ResetEdge(name string) error {
+	switch name {
+	case recurringbill.EdgeHousehold:
+		m.ResetHousehold()
+		return nil
+	case recurringbill.EdgeCategory:
+		m.ResetCategory()
+		return nil
+	}
+	return fmt.Errorf("unknown RecurringBill edge %s", name)
+}
+
+// TagMutation represents an operation that mutates the Tag nodes in the graph.
+type TagMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *int
+	name                *string
+	color               *string
+	clearedFields       map[string]struct{}
+	household           *int
+	clearedhousehold    bool
+	transactions        map[int]struct{}
+	removedtransactions map[int]struct{}
+	clearedtransactions bool
+	done                bool
+	oldValue            func(context.Context) (*Tag, error)
+	predicates          []predicate.Tag
+}
+
+var _ ent.Mutation = (*TagMutation)(nil)
+
+// tagOption allows management of the mutation configuration using functional options.
+type tagOption func(*TagMutation)
+
+// newTagMutation creates new mutation for the Tag entity.
+func newTagMutation(c config, op Op, opts ...tagOption) *TagMutation {
+	m := &TagMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTag,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTagID sets the ID field of the mutation.
+func withTagID(id int) tagOption {
+	return func(m *TagMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Tag
+		)
+		m.oldValue = func(ctx context.Context) (*Tag, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Tag.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTag sets the old Tag of the mutation.
+func withTag(node *Tag) tagOption {
+	return func(m *TagMutation) {
+		m.oldValue = func(context.Context) (*Tag, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TagMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TagMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TagMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TagMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Tag.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetName sets the "name" field.
+func (m *TagMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *TagMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Tag entity.
+// If the Tag object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TagMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *TagMutation) ResetName() {
+	m.name = nil
+}
+
+// SetColor sets the "color" field.
+func (m *TagMutation) SetColor(s string) {
+	m.color = &s
+}
+
+// Color returns the value of the "color" field in the mutation.
+func (m *TagMutation) Color() (r string, exists bool) {
+	v := m.color
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldColor returns the old "color" field's value of the Tag entity.
+// If the Tag object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TagMutation) OldColor(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldColor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldColor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldColor: %w", err)
+	}
+	return oldValue.Color, nil
+}
+
+// ClearColor clears the value of the "color" field.
+func (m *TagMutation) ClearColor() {
+	m.color = nil
+	m.clearedFields[tag.FieldColor] = struct{}{}
+}
+
+// ColorCleared returns if the "color" field was cleared in this mutation.
+func (m *TagMutation) ColorCleared() bool {
+	_, ok := m.clearedFields[tag.FieldColor]
+	return ok
+}
+
+// ResetColor resets all changes to the "color" field.
+func (m *TagMutation) ResetColor() {
+	m.color = nil
+	delete(m.clearedFields, tag.FieldColor)
+}
+
+// SetHouseholdID sets the "household" edge to the Household entity by id.
+func (m *TagMutation) SetHouseholdID(id int) {
+	m.household = &id
+}
+
+// ClearHousehold clears the "household" edge to the Household entity.
+func (m *TagMutation) ClearHousehold() {
+	m.clearedhousehold = true
+}
+
+// HouseholdCleared reports if the "household" edge to the Household entity was cleared.
+func (m *TagMutation) HouseholdCleared() bool {
+	return m.clearedhousehold
+}
+
+// HouseholdID returns the "household" edge ID in the mutation.
+func (m *TagMutation) HouseholdID() (id int, exists bool) {
+	if m.household != nil {
+		return *m.household, true
+	}
+	return
+}
+
+// HouseholdIDs returns the "household" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// HouseholdID instead. It exists only for internal usage by the builders.
+func (m *TagMutation) HouseholdIDs() (ids []int) {
+	if id := m.household; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetHousehold resets all changes to the "household" edge.
+func (m *TagMutation) ResetHousehold() {
+	m.household = nil
+	m.clearedhousehold = false
+}
+
+// AddTransactionIDs adds the "transactions" edge to the Transaction entity by ids.
+func (m *TagMutation) AddTransactionIDs(ids ...int) {
+	if m.transactions == nil {
+		m.transactions = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.transactions[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTransactions clears the "transactions" edge to the Transaction entity.
+func (m *TagMutation) ClearTransactions() {
+	m.clearedtransactions = true
+}
+
+// TransactionsCleared reports if the "transactions" edge to the Transaction entity was cleared.
+func (m *TagMutation) TransactionsCleared() bool {
+	return m.clearedtransactions
+}
+
+// RemoveTransactionIDs removes the "transactions" edge to the Transaction entity by IDs.
+func (m *TagMutation) RemoveTransactionIDs(ids ...int) {
+	if m.removedtransactions == nil {
+		m.removedtransactions = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.transactions, ids[i])
+		m.removedtransactions[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTransactions returns the removed IDs of the "transactions" edge to the Transaction entity.
+func (m *TagMutation) RemovedTransactionsIDs() (ids []int) {
+	for id := range m.removedtransactions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TransactionsIDs returns the "transactions" edge IDs in the mutation.
+func (m *TagMutation) TransactionsIDs() (ids []int) {
+	for id := range m.transactions {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTransactions resets all changes to the "transactions" edge.
+func (m *TagMutation) ResetTransactions() {
+	m.transactions = nil
+	m.clearedtransactions = false
+	m.removedtransactions = nil
+}
+
+// Where appends a list predicates to the TagMutation builder.
+func (m *TagMutation) Where(ps ...predicate.Tag) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TagMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TagMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Tag, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TagMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TagMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Tag).
+func (m *TagMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TagMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.name != nil {
+		fields = append(fields, tag.FieldName)
+	}
+	if m.color != nil {
+		fields = append(fields, tag.FieldColor)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TagMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case tag.FieldName:
+		return m.Name()
+	case tag.FieldColor:
+		return m.Color()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TagMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case tag.FieldName:
+		return m.OldName(ctx)
+	case tag.FieldColor:
+		return m.OldColor(ctx)
+	}
+	return nil, fmt.Errorf("unknown Tag field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TagMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case tag.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case tag.FieldColor:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetColor(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Tag field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TagMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TagMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TagMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Tag numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TagMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(tag.FieldColor) {
+		fields = append(fields, tag.FieldColor)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TagMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TagMutation) ClearField(name string) error {
+	switch name {
+	case tag.FieldColor:
+		m.ClearColor()
+		return nil
+	}
+	return fmt.Errorf("unknown Tag nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TagMutation) ResetField(name string) error {
+	switch name {
+	case tag.FieldName:
+		m.ResetName()
+		return nil
+	case tag.FieldColor:
+		m.ResetColor()
+		return nil
+	}
+	return fmt.Errorf("unknown Tag field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TagMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.household != nil {
+		edges = append(edges, tag.EdgeHousehold)
+	}
+	if m.transactions != nil {
+		edges = append(edges, tag.EdgeTransactions)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TagMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case tag.EdgeHousehold:
+		if id := m.household; id != nil {
+			return []ent.Value{*id}
+		}
+	case tag.EdgeTransactions:
+		ids := make([]ent.Value, 0, len(m.transactions))
+		for id := range m.transactions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TagMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedtransactions != nil {
+		edges = append(edges, tag.EdgeTransactions)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TagMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case tag.EdgeTransactions:
+		ids := make([]ent.Value, 0, len(m.removedtransactions))
+		for id := range m.removedtransactions {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TagMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedhousehold {
+		edges = append(edges, tag.EdgeHousehold)
+	}
+	if m.clearedtransactions {
+		edges = append(edges, tag.EdgeTransactions)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TagMutation) EdgeCleared(name string) bool {
+	switch name {
+	case tag.EdgeHousehold:
+		return m.clearedhousehold
+	case tag.EdgeTransactions:
+		return m.clearedtransactions
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TagMutation) ClearEdge(name string) error {
+	switch name {
+	case tag.EdgeHousehold:
+		m.ClearHousehold()
+		return nil
+	}
+	return fmt.Errorf("unknown Tag unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TagMutation) ResetEdge(name string) error {
+	switch name {
+	case tag.EdgeHousehold:
+		m.ResetHousehold()
+		return nil
+	case tag.EdgeTransactions:
+		m.ResetTransactions()
+		return nil
+	}
+	return fmt.Errorf("unknown Tag edge %s", name)
+}
+
 // TransactionMutation represents an operation that mutates the Transaction nodes in the graph.
 type TransactionMutation struct {
 	config
@@ -3159,6 +5521,9 @@ type TransactionMutation struct {
 	clearedentries    bool
 	category          *int
 	clearedcategory   bool
+	tags              map[int]struct{}
+	removedtags       map[int]struct{}
+	clearedtags       bool
 	done              bool
 	oldValue          func(context.Context) (*Transaction, error)
 	predicates        []predicate.Transaction
@@ -3577,6 +5942,60 @@ func (m *TransactionMutation) ResetCategory() {
 	m.clearedcategory = false
 }
 
+// AddTagIDs adds the "tags" edge to the Tag entity by ids.
+func (m *TransactionMutation) AddTagIDs(ids ...int) {
+	if m.tags == nil {
+		m.tags = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.tags[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTags clears the "tags" edge to the Tag entity.
+func (m *TransactionMutation) ClearTags() {
+	m.clearedtags = true
+}
+
+// TagsCleared reports if the "tags" edge to the Tag entity was cleared.
+func (m *TransactionMutation) TagsCleared() bool {
+	return m.clearedtags
+}
+
+// RemoveTagIDs removes the "tags" edge to the Tag entity by IDs.
+func (m *TransactionMutation) RemoveTagIDs(ids ...int) {
+	if m.removedtags == nil {
+		m.removedtags = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.tags, ids[i])
+		m.removedtags[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTags returns the removed IDs of the "tags" edge to the Tag entity.
+func (m *TransactionMutation) RemovedTagsIDs() (ids []int) {
+	for id := range m.removedtags {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TagsIDs returns the "tags" edge IDs in the mutation.
+func (m *TransactionMutation) TagsIDs() (ids []int) {
+	for id := range m.tags {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTags resets all changes to the "tags" edge.
+func (m *TransactionMutation) ResetTags() {
+	m.tags = nil
+	m.clearedtags = false
+	m.removedtags = nil
+}
+
 // Where appends a list predicates to the TransactionMutation builder.
 func (m *TransactionMutation) Where(ps ...predicate.Transaction) {
 	m.predicates = append(m.predicates, ps...)
@@ -3761,7 +6180,7 @@ func (m *TransactionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TransactionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.household != nil {
 		edges = append(edges, transaction.EdgeHousehold)
 	}
@@ -3773,6 +6192,9 @@ func (m *TransactionMutation) AddedEdges() []string {
 	}
 	if m.category != nil {
 		edges = append(edges, transaction.EdgeCategory)
+	}
+	if m.tags != nil {
+		edges = append(edges, transaction.EdgeTags)
 	}
 	return edges
 }
@@ -3799,15 +6221,24 @@ func (m *TransactionMutation) AddedIDs(name string) []ent.Value {
 		if id := m.category; id != nil {
 			return []ent.Value{*id}
 		}
+	case transaction.EdgeTags:
+		ids := make([]ent.Value, 0, len(m.tags))
+		for id := range m.tags {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TransactionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.removedentries != nil {
 		edges = append(edges, transaction.EdgeEntries)
+	}
+	if m.removedtags != nil {
+		edges = append(edges, transaction.EdgeTags)
 	}
 	return edges
 }
@@ -3822,13 +6253,19 @@ func (m *TransactionMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case transaction.EdgeTags:
+		ids := make([]ent.Value, 0, len(m.removedtags))
+		for id := range m.removedtags {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TransactionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 5)
 	if m.clearedhousehold {
 		edges = append(edges, transaction.EdgeHousehold)
 	}
@@ -3840,6 +6277,9 @@ func (m *TransactionMutation) ClearedEdges() []string {
 	}
 	if m.clearedcategory {
 		edges = append(edges, transaction.EdgeCategory)
+	}
+	if m.clearedtags {
+		edges = append(edges, transaction.EdgeTags)
 	}
 	return edges
 }
@@ -3856,6 +6296,8 @@ func (m *TransactionMutation) EdgeCleared(name string) bool {
 		return m.clearedentries
 	case transaction.EdgeCategory:
 		return m.clearedcategory
+	case transaction.EdgeTags:
+		return m.clearedtags
 	}
 	return false
 }
@@ -3892,6 +6334,9 @@ func (m *TransactionMutation) ResetEdge(name string) error {
 		return nil
 	case transaction.EdgeCategory:
 		m.ResetCategory()
+		return nil
+	case transaction.EdgeTags:
+		m.ResetTags()
 		return nil
 	}
 	return fmt.Errorf("unknown Transaction edge %s", name)

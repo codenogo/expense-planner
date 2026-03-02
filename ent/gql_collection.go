@@ -7,9 +7,12 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
@@ -119,6 +122,102 @@ func newAccountPaginateArgs(rv map[string]any) *accountPaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *BudgetQuery) CollectFields(ctx context.Context, satisfies ...string) (*BudgetQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *BudgetQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(budget.Columns))
+		selectedFields = []string{budget.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "category":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CategoryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, categoryImplementors)...); err != nil {
+				return err
+			}
+			_q.withCategory = query
+		case "month":
+			if _, ok := fieldSeen[budget.FieldMonth]; !ok {
+				selectedFields = append(selectedFields, budget.FieldMonth)
+				fieldSeen[budget.FieldMonth] = struct{}{}
+			}
+		case "amountCents":
+			if _, ok := fieldSeen[budget.FieldAmountCents]; !ok {
+				selectedFields = append(selectedFields, budget.FieldAmountCents)
+				fieldSeen[budget.FieldAmountCents] = struct{}{}
+			}
+		case "rollover":
+			if _, ok := fieldSeen[budget.FieldRollover]; !ok {
+				selectedFields = append(selectedFields, budget.FieldRollover)
+				fieldSeen[budget.FieldRollover] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type budgetPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []BudgetPaginateOption
+}
+
+func newBudgetPaginateArgs(rv map[string]any) *budgetPaginateArgs {
+	args := &budgetPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (_q *CategoryQuery) CollectFields(ctx context.Context, satisfies ...string) (*CategoryQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -185,6 +284,32 @@ func (_q *CategoryQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 				return err
 			}
 			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
+				*wq = *query
+			})
+
+		case "budgets":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&BudgetClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, budgetImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedBudgets(alias, func(wq *BudgetQuery) {
+				*wq = *query
+			})
+
+		case "recurringBills":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&RecurringBillClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, recurringbillImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedRecurringBills(alias, func(wq *RecurringBillQuery) {
 				*wq = *query
 			})
 		case "name":
@@ -321,6 +446,45 @@ func (_q *HouseholdQuery) collectField(ctx context.Context, oneNode bool, opCtx 
 				return err
 			}
 			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
+				*wq = *query
+			})
+
+		case "budgets":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&BudgetClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, budgetImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedBudgets(alias, func(wq *BudgetQuery) {
+				*wq = *query
+			})
+
+		case "tags":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TagClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, tagImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedTags(alias, func(wq *TagQuery) {
+				*wq = *query
+			})
+
+		case "recurringBills":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&RecurringBillClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, recurringbillImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedRecurringBills(alias, func(wq *RecurringBillQuery) {
 				*wq = *query
 			})
 		case "name":
@@ -511,6 +675,210 @@ func newPlaceholderPaginateArgs(rv map[string]any) *placeholderPaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *RecurringBillQuery) CollectFields(ctx context.Context, satisfies ...string) (*RecurringBillQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *RecurringBillQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(recurringbill.Columns))
+		selectedFields = []string{recurringbill.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "category":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CategoryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, categoryImplementors)...); err != nil {
+				return err
+			}
+			_q.withCategory = query
+		case "name":
+			if _, ok := fieldSeen[recurringbill.FieldName]; !ok {
+				selectedFields = append(selectedFields, recurringbill.FieldName)
+				fieldSeen[recurringbill.FieldName] = struct{}{}
+			}
+		case "amountCents":
+			if _, ok := fieldSeen[recurringbill.FieldAmountCents]; !ok {
+				selectedFields = append(selectedFields, recurringbill.FieldAmountCents)
+				fieldSeen[recurringbill.FieldAmountCents] = struct{}{}
+			}
+		case "dueDay":
+			if _, ok := fieldSeen[recurringbill.FieldDueDay]; !ok {
+				selectedFields = append(selectedFields, recurringbill.FieldDueDay)
+				fieldSeen[recurringbill.FieldDueDay] = struct{}{}
+			}
+		case "frequency":
+			if _, ok := fieldSeen[recurringbill.FieldFrequency]; !ok {
+				selectedFields = append(selectedFields, recurringbill.FieldFrequency)
+				fieldSeen[recurringbill.FieldFrequency] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[recurringbill.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, recurringbill.FieldStatus)
+				fieldSeen[recurringbill.FieldStatus] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[recurringbill.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, recurringbill.FieldCreatedAt)
+				fieldSeen[recurringbill.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type recurringbillPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []RecurringBillPaginateOption
+}
+
+func newRecurringBillPaginateArgs(rv map[string]any) *recurringbillPaginateArgs {
+	args := &recurringbillPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *TagQuery) CollectFields(ctx context.Context, satisfies ...string) (*TagQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *TagQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(tag.Columns))
+		selectedFields = []string{tag.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "transactions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, transactionImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
+				*wq = *query
+			})
+		case "name":
+			if _, ok := fieldSeen[tag.FieldName]; !ok {
+				selectedFields = append(selectedFields, tag.FieldName)
+				fieldSeen[tag.FieldName] = struct{}{}
+			}
+		case "color":
+			if _, ok := fieldSeen[tag.FieldColor]; !ok {
+				selectedFields = append(selectedFields, tag.FieldColor)
+				fieldSeen[tag.FieldColor] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type tagPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []TagPaginateOption
+}
+
+func newTagPaginateArgs(rv map[string]any) *tagPaginateArgs {
+	args := &tagPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (_q *TransactionQuery) CollectFields(ctx context.Context, satisfies ...string) (*TransactionQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -577,6 +945,19 @@ func (_q *TransactionQuery) collectField(ctx context.Context, oneNode bool, opCt
 				return err
 			}
 			_q.withCategory = query
+
+		case "tags":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TagClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, tagImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedTags(alias, func(wq *TagQuery) {
+				*wq = *query
+			})
 		case "description":
 			if _, ok := fieldSeen[transaction.FieldDescription]; !ok {
 				selectedFields = append(selectedFields, transaction.FieldDescription)

@@ -16,10 +16,13 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/budget"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
+	"github.com/expenser/expense-planner/ent/recurringbill"
+	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
@@ -32,6 +35,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// Account is the client for interacting with the Account builders.
 	Account *AccountClient
+	// Budget is the client for interacting with the Budget builders.
+	Budget *BudgetClient
 	// Category is the client for interacting with the Category builders.
 	Category *CategoryClient
 	// Household is the client for interacting with the Household builders.
@@ -40,6 +45,10 @@ type Client struct {
 	HouseholdMember *HouseholdMemberClient
 	// Placeholder is the client for interacting with the Placeholder builders.
 	Placeholder *PlaceholderClient
+	// RecurringBill is the client for interacting with the RecurringBill builders.
+	RecurringBill *RecurringBillClient
+	// Tag is the client for interacting with the Tag builders.
+	Tag *TagClient
 	// Transaction is the client for interacting with the Transaction builders.
 	Transaction *TransactionClient
 	// TransactionEntry is the client for interacting with the TransactionEntry builders.
@@ -60,10 +69,13 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Account = NewAccountClient(c.config)
+	c.Budget = NewBudgetClient(c.config)
 	c.Category = NewCategoryClient(c.config)
 	c.Household = NewHouseholdClient(c.config)
 	c.HouseholdMember = NewHouseholdMemberClient(c.config)
 	c.Placeholder = NewPlaceholderClient(c.config)
+	c.RecurringBill = NewRecurringBillClient(c.config)
+	c.Tag = NewTagClient(c.config)
 	c.Transaction = NewTransactionClient(c.config)
 	c.TransactionEntry = NewTransactionEntryClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -160,10 +172,13 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:              ctx,
 		config:           cfg,
 		Account:          NewAccountClient(cfg),
+		Budget:           NewBudgetClient(cfg),
 		Category:         NewCategoryClient(cfg),
 		Household:        NewHouseholdClient(cfg),
 		HouseholdMember:  NewHouseholdMemberClient(cfg),
 		Placeholder:      NewPlaceholderClient(cfg),
+		RecurringBill:    NewRecurringBillClient(cfg),
+		Tag:              NewTagClient(cfg),
 		Transaction:      NewTransactionClient(cfg),
 		TransactionEntry: NewTransactionEntryClient(cfg),
 		User:             NewUserClient(cfg),
@@ -187,10 +202,13 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:              ctx,
 		config:           cfg,
 		Account:          NewAccountClient(cfg),
+		Budget:           NewBudgetClient(cfg),
 		Category:         NewCategoryClient(cfg),
 		Household:        NewHouseholdClient(cfg),
 		HouseholdMember:  NewHouseholdMemberClient(cfg),
 		Placeholder:      NewPlaceholderClient(cfg),
+		RecurringBill:    NewRecurringBillClient(cfg),
+		Tag:              NewTagClient(cfg),
 		Transaction:      NewTransactionClient(cfg),
 		TransactionEntry: NewTransactionEntryClient(cfg),
 		User:             NewUserClient(cfg),
@@ -223,8 +241,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Account, c.Category, c.Household, c.HouseholdMember, c.Placeholder,
-		c.Transaction, c.TransactionEntry, c.User,
+		c.Account, c.Budget, c.Category, c.Household, c.HouseholdMember, c.Placeholder,
+		c.RecurringBill, c.Tag, c.Transaction, c.TransactionEntry, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -234,8 +252,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Account, c.Category, c.Household, c.HouseholdMember, c.Placeholder,
-		c.Transaction, c.TransactionEntry, c.User,
+		c.Account, c.Budget, c.Category, c.Household, c.HouseholdMember, c.Placeholder,
+		c.RecurringBill, c.Tag, c.Transaction, c.TransactionEntry, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -246,6 +264,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *AccountMutation:
 		return c.Account.mutate(ctx, m)
+	case *BudgetMutation:
+		return c.Budget.mutate(ctx, m)
 	case *CategoryMutation:
 		return c.Category.mutate(ctx, m)
 	case *HouseholdMutation:
@@ -254,6 +274,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.HouseholdMember.mutate(ctx, m)
 	case *PlaceholderMutation:
 		return c.Placeholder.mutate(ctx, m)
+	case *RecurringBillMutation:
+		return c.RecurringBill.mutate(ctx, m)
+	case *TagMutation:
+		return c.Tag.mutate(ctx, m)
 	case *TransactionMutation:
 		return c.Transaction.mutate(ctx, m)
 	case *TransactionEntryMutation:
@@ -430,6 +454,171 @@ func (c *AccountClient) mutate(ctx context.Context, m *AccountMutation) (Value, 
 	}
 }
 
+// BudgetClient is a client for the Budget schema.
+type BudgetClient struct {
+	config
+}
+
+// NewBudgetClient returns a client for the Budget from the given config.
+func NewBudgetClient(c config) *BudgetClient {
+	return &BudgetClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `budget.Hooks(f(g(h())))`.
+func (c *BudgetClient) Use(hooks ...Hook) {
+	c.hooks.Budget = append(c.hooks.Budget, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `budget.Intercept(f(g(h())))`.
+func (c *BudgetClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Budget = append(c.inters.Budget, interceptors...)
+}
+
+// Create returns a builder for creating a Budget entity.
+func (c *BudgetClient) Create() *BudgetCreate {
+	mutation := newBudgetMutation(c.config, OpCreate)
+	return &BudgetCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Budget entities.
+func (c *BudgetClient) CreateBulk(builders ...*BudgetCreate) *BudgetCreateBulk {
+	return &BudgetCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BudgetClient) MapCreateBulk(slice any, setFunc func(*BudgetCreate, int)) *BudgetCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BudgetCreateBulk{err: fmt.Errorf("calling to BudgetClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BudgetCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &BudgetCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Budget.
+func (c *BudgetClient) Update() *BudgetUpdate {
+	mutation := newBudgetMutation(c.config, OpUpdate)
+	return &BudgetUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BudgetClient) UpdateOne(_m *Budget) *BudgetUpdateOne {
+	mutation := newBudgetMutation(c.config, OpUpdateOne, withBudget(_m))
+	return &BudgetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BudgetClient) UpdateOneID(id int) *BudgetUpdateOne {
+	mutation := newBudgetMutation(c.config, OpUpdateOne, withBudgetID(id))
+	return &BudgetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Budget.
+func (c *BudgetClient) Delete() *BudgetDelete {
+	mutation := newBudgetMutation(c.config, OpDelete)
+	return &BudgetDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *BudgetClient) DeleteOne(_m *Budget) *BudgetDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *BudgetClient) DeleteOneID(id int) *BudgetDeleteOne {
+	builder := c.Delete().Where(budget.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BudgetDeleteOne{builder}
+}
+
+// Query returns a query builder for Budget.
+func (c *BudgetClient) Query() *BudgetQuery {
+	return &BudgetQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeBudget},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Budget entity by its id.
+func (c *BudgetClient) Get(ctx context.Context, id int) (*Budget, error) {
+	return c.Query().Where(budget.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BudgetClient) GetX(ctx context.Context, id int) *Budget {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryHousehold queries the household edge of a Budget.
+func (c *BudgetClient) QueryHousehold(_m *Budget) *HouseholdQuery {
+	query := (&HouseholdClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(budget.Table, budget.FieldID, id),
+			sqlgraph.To(household.Table, household.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, budget.HouseholdTable, budget.HouseholdColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCategory queries the category edge of a Budget.
+func (c *BudgetClient) QueryCategory(_m *Budget) *CategoryQuery {
+	query := (&CategoryClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(budget.Table, budget.FieldID, id),
+			sqlgraph.To(category.Table, category.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, budget.CategoryTable, budget.CategoryColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *BudgetClient) Hooks() []Hook {
+	return c.hooks.Budget
+}
+
+// Interceptors returns the client interceptors.
+func (c *BudgetClient) Interceptors() []Interceptor {
+	return c.inters.Budget
+}
+
+func (c *BudgetClient) mutate(ctx context.Context, m *BudgetMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BudgetCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BudgetUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BudgetUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BudgetDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Budget mutation op: %q", m.Op())
+	}
+}
+
 // CategoryClient is a client for the Category schema.
 type CategoryClient struct {
 	config
@@ -595,6 +784,38 @@ func (c *CategoryClient) QueryTransactions(_m *Category) *TransactionQuery {
 			sqlgraph.From(category.Table, category.FieldID, id),
 			sqlgraph.To(transaction.Table, transaction.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, category.TransactionsTable, category.TransactionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBudgets queries the budgets edge of a Category.
+func (c *CategoryClient) QueryBudgets(_m *Category) *BudgetQuery {
+	query := (&BudgetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(category.Table, category.FieldID, id),
+			sqlgraph.To(budget.Table, budget.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, category.BudgetsTable, category.BudgetsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRecurringBills queries the recurring_bills edge of a Category.
+func (c *CategoryClient) QueryRecurringBills(_m *Category) *RecurringBillQuery {
+	query := (&RecurringBillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(category.Table, category.FieldID, id),
+			sqlgraph.To(recurringbill.Table, recurringbill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, category.RecurringBillsTable, category.RecurringBillsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -792,6 +1013,54 @@ func (c *HouseholdClient) QueryTransactions(_m *Household) *TransactionQuery {
 			sqlgraph.From(household.Table, household.FieldID, id),
 			sqlgraph.To(transaction.Table, transaction.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, household.TransactionsTable, household.TransactionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBudgets queries the budgets edge of a Household.
+func (c *HouseholdClient) QueryBudgets(_m *Household) *BudgetQuery {
+	query := (&BudgetClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, id),
+			sqlgraph.To(budget.Table, budget.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.BudgetsTable, household.BudgetsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTags queries the tags edge of a Household.
+func (c *HouseholdClient) QueryTags(_m *Household) *TagQuery {
+	query := (&TagClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, id),
+			sqlgraph.To(tag.Table, tag.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.TagsTable, household.TagsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRecurringBills queries the recurring_bills edge of a Household.
+func (c *HouseholdClient) QueryRecurringBills(_m *Household) *RecurringBillQuery {
+	query := (&RecurringBillClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, id),
+			sqlgraph.To(recurringbill.Table, recurringbill.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.RecurringBillsTable, household.RecurringBillsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1122,6 +1391,336 @@ func (c *PlaceholderClient) mutate(ctx context.Context, m *PlaceholderMutation) 
 	}
 }
 
+// RecurringBillClient is a client for the RecurringBill schema.
+type RecurringBillClient struct {
+	config
+}
+
+// NewRecurringBillClient returns a client for the RecurringBill from the given config.
+func NewRecurringBillClient(c config) *RecurringBillClient {
+	return &RecurringBillClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `recurringbill.Hooks(f(g(h())))`.
+func (c *RecurringBillClient) Use(hooks ...Hook) {
+	c.hooks.RecurringBill = append(c.hooks.RecurringBill, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `recurringbill.Intercept(f(g(h())))`.
+func (c *RecurringBillClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RecurringBill = append(c.inters.RecurringBill, interceptors...)
+}
+
+// Create returns a builder for creating a RecurringBill entity.
+func (c *RecurringBillClient) Create() *RecurringBillCreate {
+	mutation := newRecurringBillMutation(c.config, OpCreate)
+	return &RecurringBillCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RecurringBill entities.
+func (c *RecurringBillClient) CreateBulk(builders ...*RecurringBillCreate) *RecurringBillCreateBulk {
+	return &RecurringBillCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RecurringBillClient) MapCreateBulk(slice any, setFunc func(*RecurringBillCreate, int)) *RecurringBillCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RecurringBillCreateBulk{err: fmt.Errorf("calling to RecurringBillClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RecurringBillCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RecurringBillCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RecurringBill.
+func (c *RecurringBillClient) Update() *RecurringBillUpdate {
+	mutation := newRecurringBillMutation(c.config, OpUpdate)
+	return &RecurringBillUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RecurringBillClient) UpdateOne(_m *RecurringBill) *RecurringBillUpdateOne {
+	mutation := newRecurringBillMutation(c.config, OpUpdateOne, withRecurringBill(_m))
+	return &RecurringBillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RecurringBillClient) UpdateOneID(id int) *RecurringBillUpdateOne {
+	mutation := newRecurringBillMutation(c.config, OpUpdateOne, withRecurringBillID(id))
+	return &RecurringBillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RecurringBill.
+func (c *RecurringBillClient) Delete() *RecurringBillDelete {
+	mutation := newRecurringBillMutation(c.config, OpDelete)
+	return &RecurringBillDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RecurringBillClient) DeleteOne(_m *RecurringBill) *RecurringBillDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RecurringBillClient) DeleteOneID(id int) *RecurringBillDeleteOne {
+	builder := c.Delete().Where(recurringbill.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RecurringBillDeleteOne{builder}
+}
+
+// Query returns a query builder for RecurringBill.
+func (c *RecurringBillClient) Query() *RecurringBillQuery {
+	return &RecurringBillQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRecurringBill},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RecurringBill entity by its id.
+func (c *RecurringBillClient) Get(ctx context.Context, id int) (*RecurringBill, error) {
+	return c.Query().Where(recurringbill.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RecurringBillClient) GetX(ctx context.Context, id int) *RecurringBill {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryHousehold queries the household edge of a RecurringBill.
+func (c *RecurringBillClient) QueryHousehold(_m *RecurringBill) *HouseholdQuery {
+	query := (&HouseholdClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(recurringbill.Table, recurringbill.FieldID, id),
+			sqlgraph.To(household.Table, household.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, recurringbill.HouseholdTable, recurringbill.HouseholdColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCategory queries the category edge of a RecurringBill.
+func (c *RecurringBillClient) QueryCategory(_m *RecurringBill) *CategoryQuery {
+	query := (&CategoryClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(recurringbill.Table, recurringbill.FieldID, id),
+			sqlgraph.To(category.Table, category.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, recurringbill.CategoryTable, recurringbill.CategoryColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RecurringBillClient) Hooks() []Hook {
+	return c.hooks.RecurringBill
+}
+
+// Interceptors returns the client interceptors.
+func (c *RecurringBillClient) Interceptors() []Interceptor {
+	return c.inters.RecurringBill
+}
+
+func (c *RecurringBillClient) mutate(ctx context.Context, m *RecurringBillMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RecurringBillCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RecurringBillUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RecurringBillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RecurringBillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RecurringBill mutation op: %q", m.Op())
+	}
+}
+
+// TagClient is a client for the Tag schema.
+type TagClient struct {
+	config
+}
+
+// NewTagClient returns a client for the Tag from the given config.
+func NewTagClient(c config) *TagClient {
+	return &TagClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `tag.Hooks(f(g(h())))`.
+func (c *TagClient) Use(hooks ...Hook) {
+	c.hooks.Tag = append(c.hooks.Tag, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `tag.Intercept(f(g(h())))`.
+func (c *TagClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Tag = append(c.inters.Tag, interceptors...)
+}
+
+// Create returns a builder for creating a Tag entity.
+func (c *TagClient) Create() *TagCreate {
+	mutation := newTagMutation(c.config, OpCreate)
+	return &TagCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Tag entities.
+func (c *TagClient) CreateBulk(builders ...*TagCreate) *TagCreateBulk {
+	return &TagCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TagClient) MapCreateBulk(slice any, setFunc func(*TagCreate, int)) *TagCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TagCreateBulk{err: fmt.Errorf("calling to TagClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TagCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TagCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Tag.
+func (c *TagClient) Update() *TagUpdate {
+	mutation := newTagMutation(c.config, OpUpdate)
+	return &TagUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TagClient) UpdateOne(_m *Tag) *TagUpdateOne {
+	mutation := newTagMutation(c.config, OpUpdateOne, withTag(_m))
+	return &TagUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TagClient) UpdateOneID(id int) *TagUpdateOne {
+	mutation := newTagMutation(c.config, OpUpdateOne, withTagID(id))
+	return &TagUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Tag.
+func (c *TagClient) Delete() *TagDelete {
+	mutation := newTagMutation(c.config, OpDelete)
+	return &TagDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TagClient) DeleteOne(_m *Tag) *TagDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TagClient) DeleteOneID(id int) *TagDeleteOne {
+	builder := c.Delete().Where(tag.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TagDeleteOne{builder}
+}
+
+// Query returns a query builder for Tag.
+func (c *TagClient) Query() *TagQuery {
+	return &TagQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTag},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Tag entity by its id.
+func (c *TagClient) Get(ctx context.Context, id int) (*Tag, error) {
+	return c.Query().Where(tag.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TagClient) GetX(ctx context.Context, id int) *Tag {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryHousehold queries the household edge of a Tag.
+func (c *TagClient) QueryHousehold(_m *Tag) *HouseholdQuery {
+	query := (&HouseholdClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(tag.Table, tag.FieldID, id),
+			sqlgraph.To(household.Table, household.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, tag.HouseholdTable, tag.HouseholdColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTransactions queries the transactions edge of a Tag.
+func (c *TagClient) QueryTransactions(_m *Tag) *TransactionQuery {
+	query := (&TransactionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(tag.Table, tag.FieldID, id),
+			sqlgraph.To(transaction.Table, transaction.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, tag.TransactionsTable, tag.TransactionsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TagClient) Hooks() []Hook {
+	return c.hooks.Tag
+}
+
+// Interceptors returns the client interceptors.
+func (c *TagClient) Interceptors() []Interceptor {
+	return c.inters.Tag
+}
+
+func (c *TagClient) mutate(ctx context.Context, m *TagMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TagCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TagUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TagUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TagDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Tag mutation op: %q", m.Op())
+	}
+}
+
 // TransactionClient is a client for the Transaction schema.
 type TransactionClient struct {
 	config
@@ -1287,6 +1886,22 @@ func (c *TransactionClient) QueryCategory(_m *Transaction) *CategoryQuery {
 			sqlgraph.From(transaction.Table, transaction.FieldID, id),
 			sqlgraph.To(category.Table, category.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, transaction.CategoryTable, transaction.CategoryColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTags queries the tags edge of a Transaction.
+func (c *TransactionClient) QueryTags(_m *Transaction) *TagQuery {
+	query := (&TagClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(transaction.Table, transaction.FieldID, id),
+			sqlgraph.To(tag.Table, tag.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, transaction.TagsTable, transaction.TagsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1652,11 +2267,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Account, Category, Household, HouseholdMember, Placeholder, Transaction,
-		TransactionEntry, User []ent.Hook
+		Account, Budget, Category, Household, HouseholdMember, Placeholder,
+		RecurringBill, Tag, Transaction, TransactionEntry, User []ent.Hook
 	}
 	inters struct {
-		Account, Category, Household, HouseholdMember, Placeholder, Transaction,
-		TransactionEntry, User []ent.Interceptor
+		Account, Budget, Category, Household, HouseholdMember, Placeholder,
+		RecurringBill, Tag, Transaction, TransactionEntry, User []ent.Interceptor
 	}
 )
