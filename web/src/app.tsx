@@ -8,6 +8,9 @@ import { TransactionsPage } from '@/pages/transactions/index'
 import { AddExpensePage } from '@/pages/transactions/add-expense'
 import { AddIncomePage } from '@/pages/transactions/add-income'
 import { ImportPage } from '@/pages/import/index'
+import { ReportsPage } from '@/pages/reports/index'
+import { SpendingReportPage } from '@/pages/reports/spending'
+import { TrendReportPage } from '@/pages/reports/trend'
 import { Toaster } from '@/components/ui/sonner'
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -35,7 +38,9 @@ export default function App() {
           <Route path="transactions/add-expense" element={<AddExpensePage />} />
           <Route path="transactions/add-income" element={<AddIncomePage />} />
           <Route path="import" element={<ImportPage />} />
-          <Route path="reports" element={<PlaceholderPage title="Reports" />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="reports/spending" element={<SpendingReportPage />} />
+          <Route path="reports/trend" element={<TrendReportPage />} />
           <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
           <Route path="household" element={<PlaceholderPage title="Household" />} />
         </Route>
