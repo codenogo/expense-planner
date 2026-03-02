@@ -7,15 +7,7 @@ import { useHousehold } from '@/providers/household-provider'
 import { formatCents } from '@/lib/format'
 import type { MonthSummary } from '@/types/reports'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { ArrowLeft, TrendingUp } from 'lucide-react'
 
 const monthOptions = [3, 6, 12]
 
@@ -33,8 +25,6 @@ export function TrendReportPage() {
   )
 
   const trends = data?.monthlyTrend ?? []
-
-  // Convert cents to major units for chart readability
   const chartData = trends.map((m) => ({
     month: m.month,
     income: m.incomeCents / 100,
@@ -44,76 +34,97 @@ export function TrendReportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/reports">← Reports</Link>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+          <Link to="/reports"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
-        <h1 className="text-2xl font-bold">Monthly Trend</h1>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10">
+          <TrendingUp className="h-5 w-5 text-emerald-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Monthly Trend</h1>
+          <p className="text-xs text-muted-foreground">Income, expenses & net over time</p>
+        </div>
       </div>
 
-      <div className="flex gap-2">
+      {/* Period selector */}
+      <div className="flex gap-1 rounded-lg bg-muted/50 p-1 w-fit">
         {monthOptions.map((n) => (
-          <Button
+          <button
             key={n}
-            variant={months === n ? 'default' : 'outline'}
-            size="sm"
             onClick={() => setMonths(n)}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              months === n
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             {n} Months
-          </Button>
+          </button>
         ))}
       </div>
 
-      {loading && <p className="text-muted-foreground">Loading...</p>}
-      {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {loading && (
+        <div className="rounded-xl border bg-card p-6 space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-4 rounded bg-muted animate-pulse" style={{ width: `${90 - i * 15}%` }} />
+          ))}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg bg-rose-400/10 px-4 py-3 text-sm text-rose-400">{error.message}</div>
+      )}
 
       {!loading && !error && trends.length === 0 && (
-        <p className="text-muted-foreground">No data available for this period.</p>
+        <div className="rounded-xl border bg-card p-6">
+          <p className="text-sm text-muted-foreground">No data available for this period.</p>
+        </div>
       )}
 
       {trends.length > 0 && (
         <>
-          <Card>
-            <CardContent className="pt-6">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value: number | undefined) => value != null ? formatCents(value * 100, currency) : ''}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="income" stroke="#22c55e" name="Income" strokeWidth={2} />
-                  <Line type="monotone" dataKey="expenses" stroke="#ef4444" name="Expenses" strokeWidth={2} />
-                  <Line type="monotone" dataKey="net" stroke="#3b82f6" name="Net" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {/* Chart */}
+          <div className="rounded-xl border bg-card p-6">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <Tooltip
+                  formatter={(value: number | undefined) => value != null ? formatCents(value * 100, currency) : ''}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="income" stroke="#34d399" name="Income" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="expenses" stroke="#fb7185" name="Expenses" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="net" stroke="#38bdf8" name="Net" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Income</TableHead>
-                  <TableHead className="text-right">Expenses</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {trends.map((m) => (
-                  <TableRow key={m.month}>
-                    <TableCell className="font-medium">{m.month}</TableCell>
-                    <TableCell className="text-right text-green-600">{formatCents(m.incomeCents, currency)}</TableCell>
-                    <TableCell className="text-right text-red-600">{formatCents(m.expenseCents, currency)}</TableCell>
-                    <TableCell className={`text-right font-medium ${m.netCents >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+          {/* Data table */}
+          <div className="rounded-xl border bg-card p-6">
+            <h3 className="text-sm font-semibold mb-4">Monthly Breakdown</h3>
+            <div className="divide-y divide-border">
+              {trends.map((m) => (
+                <div key={m.month} className="flex items-center justify-between py-3">
+                  <span className="text-sm font-medium">{m.month}</span>
+                  <div className="flex items-center gap-6">
+                    <span className="text-sm text-emerald-400 min-w-[90px] text-right">
+                      {formatCents(m.incomeCents, currency)}
+                    </span>
+                    <span className="text-sm text-rose-400 min-w-[90px] text-right">
+                      {formatCents(m.expenseCents, currency)}
+                    </span>
+                    <span className={`text-sm font-semibold min-w-[90px] text-right ${
+                      m.netCents >= 0 ? 'text-sky-400' : 'text-rose-400'
+                    }`}>
                       {formatCents(m.netCents, currency)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}

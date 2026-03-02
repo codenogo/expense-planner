@@ -5,9 +5,9 @@ import { JOIN_HOUSEHOLD_MUTATION } from '@/graphql/household'
 import type { HouseholdMember } from '@/types/household'
 import { useHousehold } from '@/providers/household-provider'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { UserPlus, KeyRound } from 'lucide-react'
 
 export function JoinHouseholdPage() {
   const navigate = useNavigate()
@@ -32,35 +32,45 @@ export function JoinHouseholdPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Join Household</CardTitle>
-          <CardDescription>Enter an invite code to join an existing household</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+      <div className="w-full max-w-md space-y-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-400/10">
+            <UserPlus className="h-6 w-6 text-sky-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Join Household</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enter an invite code to join an existing household
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <p className="text-sm text-destructive">{error.message}</p>
+              <div className="rounded-lg bg-rose-400/10 px-4 py-3 text-sm text-rose-400">{error.message}</div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="code">Invite Code</Label>
-              <Input
-                id="code"
-                type="text"
-                placeholder="Enter invite code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
+            <div className="space-y-1.5">
+              <Label htmlFor="code" className="text-xs font-medium text-muted-foreground">Invite Code</Label>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="code"
+                  type="text"
+                  placeholder="Enter invite code"
+                  className="pl-10"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-          </CardContent>
-          <CardFooter>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Joining...' : 'Join Household'}
             </Button>
-          </CardFooter>
-        </form>
-      </Card>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }

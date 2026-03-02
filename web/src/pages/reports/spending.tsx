@@ -7,49 +7,47 @@ import { useHousehold } from '@/providers/household-provider'
 import { formatCents } from '@/lib/format'
 import type { CategorySpend } from '@/types/reports'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { ArrowLeft, PieChart, CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
 
-function getMonthStart(): string {
+function getMonthStart(): Date {
   const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  return new Date(now.getFullYear(), now.getMonth(), 1)
 }
 
-function getToday(): string {
-  return new Date().toISOString().split('T')[0]
+function getToday(): Date {
+  return new Date()
 }
 
 export function SpendingReportPage() {
   const { currentHouseholdId, currentHousehold } = useHousehold()
   const currency = currentHousehold?.baseCurrency ?? 'KES'
 
-  const [startDate, setStartDate] = useState(getMonthStart)
-  const [endDate, setEndDate] = useState(getToday)
+  const [startDate, setStartDate] = useState<Date>(getMonthStart)
+  const [endDate, setEndDate] = useState<Date>(getToday)
+  const [startOpen, setStartOpen] = useState(false)
+  const [endOpen, setEndOpen] = useState(false)
 
   const { data, loading, error } = useQuery<{ spendingByCategory: CategorySpend[] }>(
     SPENDING_BY_CATEGORY_QUERY,
     {
       variables: {
         householdID: currentHouseholdId,
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
       },
       skip: !currentHouseholdId,
     }
   )
 
   const categories = data?.spendingByCategory ?? []
-
-  // Prepare chart data — convert cents to major currency units for readability
   const chartData = categories.map((cat) => ({
     name: cat.name,
     amount: cat.totalCents / 100,
@@ -57,72 +55,117 @@ export function SpendingReportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/reports">← Reports</Link>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+          <Link to="/reports"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
-        <h1 className="text-2xl font-bold">Spending by Category</h1>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-400/10">
+          <PieChart className="h-5 w-5 text-rose-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Spending by Category</h1>
+          <p className="text-xs text-muted-foreground">Breakdown of expenses by category</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Date Range</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 items-end">
-            <div className="space-y-2">
-              <Label>Start Date</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
+      {/* Date range filter */}
+      <div className="rounded-xl border bg-card p-6">
+        <h3 className="text-sm font-semibold mb-3">Date Range</h3>
+        <div className="flex gap-4 items-end">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Start Date</Label>
+            <Popover open={startOpen} onOpenChange={setStartOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal gap-2">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  {format(startDate, 'MMM d, yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(d) => {
+                    if (d) { setStartDate(d); setStartOpen(false) }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
-        </CardContent>
-      </Card>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">End Date</Label>
+            <Popover open={endOpen} onOpenChange={setEndOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal gap-2">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                  {format(endDate, 'MMM d, yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(d) => {
+                    if (d) { setEndDate(d); setEndOpen(false) }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      </div>
 
-      {loading && <p className="text-muted-foreground">Loading...</p>}
-      {error && <p className="text-sm text-destructive">{error.message}</p>}
+      {loading && (
+        <div className="rounded-xl border bg-card p-6 space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-4 rounded bg-muted animate-pulse" style={{ width: `${80 - i * 15}%` }} />
+          ))}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg bg-rose-400/10 px-4 py-3 text-sm text-rose-400">{error.message}</div>
+      )}
 
       {!loading && !error && categories.length === 0 && (
-        <p className="text-muted-foreground">No expenses found in this date range.</p>
+        <div className="rounded-xl border bg-card p-6">
+          <p className="text-sm text-muted-foreground">No expenses found in this date range.</p>
+        </div>
       )}
 
       {categories.length > 0 && (
         <>
-          <Card>
-            <CardContent className="pt-6">
-              <ResponsiveContainer width="100%" height={Math.max(200, categories.length * 40)}>
-                <BarChart data={chartData} layout="vertical" margin={{ left: 80 }}>
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="name" width={80} />
-                  <Tooltip formatter={(value: number | undefined) => value != null ? formatCents(value * 100, currency) : ''} />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {/* Chart */}
+          <div className="rounded-xl border bg-card p-6">
+            <ResponsiveContainer width="100%" height={Math.max(200, categories.length * 40)}>
+              <BarChart data={chartData} layout="vertical" margin={{ left: 80 }}>
+                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis type="category" dataKey="name" width={80} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <Tooltip
+                  formatter={(value: number | undefined) => value != null ? formatCents(value * 100, currency) : ''}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                />
+                <Bar dataKey="amount" fill="#f43f5e" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">%</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((cat) => (
-                  <TableRow key={cat.categoryID}>
-                    <TableCell className="font-medium">{cat.name}</TableCell>
-                    <TableCell className="text-right">{formatCents(cat.totalCents, currency)}</TableCell>
-                    <TableCell className="text-right">{cat.percentage.toFixed(1)}%</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          {/* Breakdown table */}
+          <div className="rounded-xl border bg-card p-6">
+            <h3 className="text-sm font-semibold mb-4">Category Breakdown</h3>
+            <div className="divide-y divide-border">
+              {categories.map((cat) => (
+                <div key={cat.categoryID} className="flex items-center justify-between py-3">
+                  <span className="text-sm font-medium">{cat.name}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-muted-foreground">{cat.percentage.toFixed(1)}%</span>
+                    <span className="text-sm font-semibold text-rose-400 min-w-[90px] text-right">
+                      {formatCents(cat.totalCents, currency)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </>
       )}

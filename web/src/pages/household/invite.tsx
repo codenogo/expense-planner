@@ -4,7 +4,6 @@ import { CREATE_INVITE_CODE_MUTATION } from '@/graphql/household'
 import type { InviteCode } from '@/types/household'
 import { useHousehold } from '@/providers/household-provider'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Mail, Copy, Check } from 'lucide-react'
 
 export function InvitePage() {
   const { currentHouseholdId } = useHousehold()
@@ -40,29 +40,34 @@ export function InvitePage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Invite Members</h1>
-      <p className="text-muted-foreground mt-2">Generate an invite code to share with others</p>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10">
+          <Mail className="h-5 w-5 text-emerald-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Invite Members</h1>
+          <p className="text-xs text-muted-foreground">Generate an invite code to share with others</p>
+        </div>
+      </div>
 
-      <Card className="mt-6 max-w-md">
-        <CardHeader>
-          <CardTitle>Generate Invite Code</CardTitle>
-          <CardDescription>
+      <div className="max-w-md rounded-xl border bg-card p-6 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold">Generate Invite Code</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
             Create a code that others can use to join your household
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <p className="text-sm text-destructive mb-4">{error.message}</p>
-          )}
-          {!currentHouseholdId && (
-            <p className="text-sm text-destructive mb-4">No household selected</p>
-          )}
-          <Button onClick={handleGenerate} disabled={loading || !currentHouseholdId}>
-            {loading ? 'Generating...' : 'Generate Code'}
-          </Button>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        {error && (
+          <div className="rounded-lg bg-rose-400/10 px-4 py-3 text-sm text-rose-400">{error.message}</div>
+        )}
+        {!currentHouseholdId && (
+          <div className="rounded-lg bg-rose-400/10 px-4 py-3 text-sm text-rose-400">No household selected</div>
+        )}
+        <Button onClick={handleGenerate} disabled={loading || !currentHouseholdId}>
+          {loading ? 'Generating...' : 'Generate Code'}
+        </Button>
+      </div>
 
       <Dialog open={!!inviteCode} onOpenChange={(open) => !open && setInviteCode(null)}>
         <DialogContent>
@@ -73,10 +78,10 @@ export function InvitePage() {
               {inviteCode && new Date(inviteCode.expiresAt).toLocaleString()}.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-2 rounded-md border p-4">
-            <code className="flex-1 text-lg font-mono">{inviteCode?.code}</code>
-            <Button variant="outline" size="sm" onClick={handleCopy}>
-              {copied ? 'Copied!' : 'Copy'}
+          <div className="flex items-center gap-2 rounded-xl border bg-muted/30 p-4">
+            <code className="flex-1 text-lg font-mono tracking-wider">{inviteCode?.code}</code>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleCopy}>
+              {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
             </Button>
           </div>
         </DialogContent>
