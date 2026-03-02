@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/expenser/expense-planner/ent"
+	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/invitecode"
+	"github.com/expenser/expense-planner/ent/user"
 )
 
 // setupHouseholdFixtures creates a household, owner user, and member user for testing.
@@ -319,15 +321,19 @@ func TestHouseholdService_RemoveMember(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			// Verify member was removed.
+			// Verify target was removed.
 			exists, err := client.HouseholdMember.Query().
 				Where(
-					householdmember.HasHouseholdWith(),
-					householdmember.HasUserWith(),
+					householdmember.HasHouseholdWith(household.ID(householdID)),
+					householdmember.HasUserWith(user.ID(targetID)),
 				).
 				Exist(ctx)
-			_ = exists
-			_ = err
+			if err != nil {
+				t.Fatalf("querying membership after removal: %v", err)
+			}
+			if exists {
+				t.Error("expected member to be removed, but membership still exists")
+			}
 		})
 	}
 }

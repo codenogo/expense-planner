@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "08",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create InviteCode ent schema and run codegen",
+      "files": ["ent/schema/invite_code.go", "ent/schema/household.go"],
+      "commit": "2915ac5"
+    },
+    {
+      "task": "Create HouseholdService with invite/join/manage logic and tests",
+      "files": ["internal/service/household.go", "internal/service/household_test.go"],
+      "commit": "89f8a4d"
+    },
+    {
+      "task": "Wire member management to GraphQL mutations and resolvers",
+      "files": ["graph/member.graphqls", "graph/member.resolvers.go", "graph/resolver.go", "graph/generated.go", "graph/ent.resolvers.go", "cmd/expense-planner/main.go"],
+      "commit": "cf83114"
+    }
+  ],
+  "verification": [
+    {"command": "go build ./...", "result": "pass"},
+    {"command": "go vet ./...", "result": "pass"},
+    {"command": "go test -count=1 ./...", "result": "pass"}
+  ],
+  "commit": "cf83114",
+  "timestamp": "2026-03-02T01:15:00Z"
+}

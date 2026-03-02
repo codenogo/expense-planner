@@ -110,19 +110,29 @@ func (s *HouseholdService) JoinHousehold(ctx context.Context, code string, joine
 		return nil, fmt.Errorf("already a member of this household")
 	}
 
-	// Create membership.
-	mem, err := s.client.HouseholdMember.Create().
+	// Create membership and mark code used in a transaction.
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("starting transaction: %w", err)
+	}
+
+	mem, err := tx.HouseholdMember.Create().
 		SetHouseholdID(hh.ID).
 		SetUserID(joinerID).
 		SetRole(householdmember.RoleMember).
 		Save(ctx)
 	if err != nil {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("creating membership: %w", err)
 	}
 
-	// Mark code as used.
-	if err := s.client.InviteCode.UpdateOneID(ic.ID).SetUsed(true).Exec(ctx); err != nil {
+	if err := tx.InviteCode.UpdateOneID(ic.ID).SetUsed(true).Exec(ctx); err != nil {
+		_ = tx.Rollback()
 		return nil, fmt.Errorf("marking invite code used: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("committing join transaction: %w", err)
 	}
 
 	return mem, nil
