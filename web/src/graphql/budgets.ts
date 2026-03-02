@@ -14,3 +14,18 @@ export const BUDGETS_QUERY = gql`
     }
   }
 `
+
+export const CREATE_BUDGET_MUTATION = gql`
+  mutation CreateBudget($input: CreateBudgetInput!) {
+    createBudget(input: $input) {
+      id
+      month
+      amountCents
+      rollover
+      category {
+        id
+        name
+      }
+    }
+  }
+`
