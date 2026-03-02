@@ -11,14 +11,23 @@ import (
 	"time"
 
 	"github.com/expenser/expense-planner/graph/model"
-	"github.com/expenser/expense-planner/internal/middleware"
 )
 
 // SpendingByCategory is the resolver for the spendingByCategory field.
 func (r *queryResolver) SpendingByCategory(ctx context.Context, householdID int, startDate time.Time, endDate time.Time) ([]*model.CategorySpend, error) {
-	uc := middleware.UserFromContext(ctx)
-	if uc == nil {
-		return nil, fmt.Errorf("authentication required")
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	allowed := false
+	for _, id := range hhIDs {
+		if id == householdID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return nil, fmt.Errorf("access denied to household %d", householdID)
 	}
 
 	results, err := r.ReportSvc.SpendingByCategory(ctx, householdID, startDate, endDate)
@@ -40,9 +49,19 @@ func (r *queryResolver) SpendingByCategory(ctx context.Context, householdID int,
 
 // MonthlyTrend is the resolver for the monthlyTrend field.
 func (r *queryResolver) MonthlyTrend(ctx context.Context, householdID int, months int) ([]*model.MonthSummary, error) {
-	uc := middleware.UserFromContext(ctx)
-	if uc == nil {
-		return nil, fmt.Errorf("authentication required")
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	allowed := false
+	for _, id := range hhIDs {
+		if id == householdID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return nil, fmt.Errorf("access denied to household %d", householdID)
 	}
 
 	results, err := r.ReportSvc.MonthlyTrend(ctx, householdID, months, time.Now().UTC())
@@ -64,9 +83,19 @@ func (r *queryResolver) MonthlyTrend(ctx context.Context, householdID int, month
 
 // DashboardSummary is the resolver for the dashboardSummary field.
 func (r *queryResolver) DashboardSummary(ctx context.Context, householdID int) (*model.DashboardSummary, error) {
-	uc := middleware.UserFromContext(ctx)
-	if uc == nil {
-		return nil, fmt.Errorf("authentication required")
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	allowed := false
+	for _, id := range hhIDs {
+		if id == householdID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return nil, fmt.Errorf("access denied to household %d", householdID)
 	}
 
 	ds, err := r.ReportSvc.GetDashboardSummary(ctx, householdID)
