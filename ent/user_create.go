@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/user"
 )
 
@@ -64,6 +65,21 @@ func (_c *UserCreate) SetNillableUpdatedAt(v *time.Time) *UserCreate {
 		_c.SetUpdatedAt(*v)
 	}
 	return _c
+}
+
+// AddMemberIDs adds the "members" edge to the HouseholdMember entity by IDs.
+func (_c *UserCreate) AddMemberIDs(ids ...int) *UserCreate {
+	_c.mutation.AddMemberIDs(ids...)
+	return _c
+}
+
+// AddMembers adds the "members" edges to the HouseholdMember entity.
+func (_c *UserCreate) AddMembers(v ...*HouseholdMember) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMemberIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -183,6 +199,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.MembersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

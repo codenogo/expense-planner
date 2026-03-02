@@ -26,8 +26,33 @@ type User struct {
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Members holds the value of the members edge.
+	Members []*HouseholdMember `json:"members,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+	// totalCount holds the count of the edges above.
+	totalCount [1]map[string]int
+
+	namedMembers map[string][]*HouseholdMember
+}
+
+// MembersOrErr returns the Members value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) MembersOrErr() ([]*HouseholdMember, error) {
+	if e.loadedTypes[0] {
+		return e.Members, nil
+	}
+	return nil, &NotLoadedError{edge: "members"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -105,6 +130,11 @@ func (_m *User) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryMembers queries the "members" edge of the User entity.
+func (_m *User) QueryMembers() *HouseholdMemberQuery {
+	return NewUserClient(_m.config).QueryMembers(_m)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -143,6 +173,30 @@ func (_m *User) String() string {
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedMembers returns the Members named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedMembers(name string) ([]*HouseholdMember, error) {
+	if _m.Edges.namedMembers == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedMembers[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedMembers(name string, edges ...*HouseholdMember) {
+	if _m.Edges.namedMembers == nil {
+		_m.Edges.namedMembers = make(map[string][]*HouseholdMember)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedMembers[name] = []*HouseholdMember{}
+	} else {
+		_m.Edges.namedMembers[name] = append(_m.Edges.namedMembers[name], edges...)
+	}
 }
 
 // Users is a parsable slice of User.

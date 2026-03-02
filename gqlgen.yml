@@ -27,3 +27,6 @@ models:
   ID:
     model:
       - github.com/99designs/gqlgen/graphql.IntID
+  Time:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time

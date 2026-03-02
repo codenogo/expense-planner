@@ -8,6 +8,108 @@ import (
 )
 
 var (
+	// AccountsColumns holds the columns for the "accounts" table.
+	AccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"asset", "income", "expense", "liability"}},
+		{Name: "balance_cents", Type: field.TypeInt64, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "household_accounts", Type: field.TypeInt},
+	}
+	// AccountsTable holds the schema information for the "accounts" table.
+	AccountsTable = &schema.Table{
+		Name:       "accounts",
+		Columns:    AccountsColumns,
+		PrimaryKey: []*schema.Column{AccountsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "accounts_households_accounts",
+				Columns:    []*schema.Column{AccountsColumns[5]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "account_name_household_accounts",
+				Unique:  true,
+				Columns: []*schema.Column{AccountsColumns[1], AccountsColumns[5]},
+			},
+		},
+	}
+	// CategoriesColumns holds the columns for the "categories" table.
+	CategoriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "icon", Type: field.TypeString, Nullable: true},
+		{Name: "color", Type: field.TypeString, Nullable: true},
+		{Name: "is_system", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "category_children", Type: field.TypeInt, Nullable: true},
+		{Name: "household_categories", Type: field.TypeInt},
+	}
+	// CategoriesTable holds the schema information for the "categories" table.
+	CategoriesTable = &schema.Table{
+		Name:       "categories",
+		Columns:    CategoriesColumns,
+		PrimaryKey: []*schema.Column{CategoriesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "categories_categories_children",
+				Columns:    []*schema.Column{CategoriesColumns[6]},
+				RefColumns: []*schema.Column{CategoriesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "categories_households_categories",
+				Columns:    []*schema.Column{CategoriesColumns[7]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// HouseholdsColumns holds the columns for the "households" table.
+	HouseholdsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "base_currency", Type: field.TypeString, Default: "KES"},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// HouseholdsTable holds the schema information for the "households" table.
+	HouseholdsTable = &schema.Table{
+		Name:       "households",
+		Columns:    HouseholdsColumns,
+		PrimaryKey: []*schema.Column{HouseholdsColumns[0]},
+	}
+	// HouseholdMembersColumns holds the columns for the "household_members" table.
+	HouseholdMembersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "role", Type: field.TypeEnum, Enums: []string{"owner", "member"}, Default: "member"},
+		{Name: "joined_at", Type: field.TypeTime},
+		{Name: "household_members", Type: field.TypeInt},
+		{Name: "user_members", Type: field.TypeInt},
+	}
+	// HouseholdMembersTable holds the schema information for the "household_members" table.
+	HouseholdMembersTable = &schema.Table{
+		Name:       "household_members",
+		Columns:    HouseholdMembersColumns,
+		PrimaryKey: []*schema.Column{HouseholdMembersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "household_members_households_members",
+				Columns:    []*schema.Column{HouseholdMembersColumns[3]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "household_members_users_members",
+				Columns:    []*schema.Column{HouseholdMembersColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// PlaceholdersColumns holds the columns for the "placeholders" table.
 	PlaceholdersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -35,10 +137,19 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AccountsTable,
+		CategoriesTable,
+		HouseholdsTable,
+		HouseholdMembersTable,
 		PlaceholdersTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	AccountsTable.ForeignKeys[0].RefTable = HouseholdsTable
+	CategoriesTable.ForeignKeys[0].RefTable = CategoriesTable
+	CategoriesTable.ForeignKeys[1].RefTable = HouseholdsTable
+	HouseholdMembersTable.ForeignKeys[0].RefTable = HouseholdsTable
+	HouseholdMembersTable.ForeignKeys[1].RefTable = UsersTable
 }

@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/predicate"
 	"github.com/expenser/expense-planner/ent/user"
 )
@@ -76,9 +77,45 @@ func (_u *UserUpdate) SetUpdatedAt(v time.Time) *UserUpdate {
 	return _u
 }
 
+// AddMemberIDs adds the "members" edge to the HouseholdMember entity by IDs.
+func (_u *UserUpdate) AddMemberIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddMemberIDs(ids...)
+	return _u
+}
+
+// AddMembers adds the "members" edges to the HouseholdMember entity.
+func (_u *UserUpdate) AddMembers(v ...*HouseholdMember) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMemberIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearMembers clears all "members" edges to the HouseholdMember entity.
+func (_u *UserUpdate) ClearMembers() *UserUpdate {
+	_u.mutation.ClearMembers()
+	return _u
+}
+
+// RemoveMemberIDs removes the "members" edge to HouseholdMember entities by IDs.
+func (_u *UserUpdate) RemoveMemberIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveMemberIDs(ids...)
+	return _u
+}
+
+// RemoveMembers removes "members" edges to HouseholdMember entities.
+func (_u *UserUpdate) RemoveMembers(v ...*HouseholdMember) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMemberIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -156,6 +193,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.MembersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMembersIDs(); len(nodes) > 0 && !_u.mutation.MembersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MembersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -224,9 +306,45 @@ func (_u *UserUpdateOne) SetUpdatedAt(v time.Time) *UserUpdateOne {
 	return _u
 }
 
+// AddMemberIDs adds the "members" edge to the HouseholdMember entity by IDs.
+func (_u *UserUpdateOne) AddMemberIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddMemberIDs(ids...)
+	return _u
+}
+
+// AddMembers adds the "members" edges to the HouseholdMember entity.
+func (_u *UserUpdateOne) AddMembers(v ...*HouseholdMember) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMemberIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
+}
+
+// ClearMembers clears all "members" edges to the HouseholdMember entity.
+func (_u *UserUpdateOne) ClearMembers() *UserUpdateOne {
+	_u.mutation.ClearMembers()
+	return _u
+}
+
+// RemoveMemberIDs removes the "members" edge to HouseholdMember entities by IDs.
+func (_u *UserUpdateOne) RemoveMemberIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveMemberIDs(ids...)
+	return _u
+}
+
+// RemoveMembers removes "members" edges to HouseholdMember entities.
+func (_u *UserUpdateOne) RemoveMembers(v ...*HouseholdMember) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMemberIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -333,6 +451,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(user.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.MembersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMembersIDs(); len(nodes) > 0 && !_u.mutation.MembersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MembersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.MembersTable,
+			Columns: []string{user.MembersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &User{config: _u.config}
 	_spec.Assign = _node.assignValues

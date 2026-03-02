@@ -5,6 +5,10 @@ package ent
 import (
 	"time"
 
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/category"
+	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/schema"
 	"github.com/expenser/expense-planner/ent/user"
 )
@@ -13,6 +17,56 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	accountFields := schema.Account{}.Fields()
+	_ = accountFields
+	// accountDescName is the schema descriptor for name field.
+	accountDescName := accountFields[0].Descriptor()
+	// account.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	account.NameValidator = accountDescName.Validators[0].(func(string) error)
+	// accountDescBalanceCents is the schema descriptor for balance_cents field.
+	accountDescBalanceCents := accountFields[2].Descriptor()
+	// account.DefaultBalanceCents holds the default value on creation for the balance_cents field.
+	account.DefaultBalanceCents = accountDescBalanceCents.Default.(int64)
+	// accountDescCreatedAt is the schema descriptor for created_at field.
+	accountDescCreatedAt := accountFields[3].Descriptor()
+	// account.DefaultCreatedAt holds the default value on creation for the created_at field.
+	account.DefaultCreatedAt = accountDescCreatedAt.Default.(func() time.Time)
+	categoryFields := schema.Category{}.Fields()
+	_ = categoryFields
+	// categoryDescName is the schema descriptor for name field.
+	categoryDescName := categoryFields[0].Descriptor()
+	// category.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	category.NameValidator = categoryDescName.Validators[0].(func(string) error)
+	// categoryDescIsSystem is the schema descriptor for is_system field.
+	categoryDescIsSystem := categoryFields[3].Descriptor()
+	// category.DefaultIsSystem holds the default value on creation for the is_system field.
+	category.DefaultIsSystem = categoryDescIsSystem.Default.(bool)
+	// categoryDescCreatedAt is the schema descriptor for created_at field.
+	categoryDescCreatedAt := categoryFields[4].Descriptor()
+	// category.DefaultCreatedAt holds the default value on creation for the created_at field.
+	category.DefaultCreatedAt = categoryDescCreatedAt.Default.(func() time.Time)
+	householdFields := schema.Household{}.Fields()
+	_ = householdFields
+	// householdDescName is the schema descriptor for name field.
+	householdDescName := householdFields[0].Descriptor()
+	// household.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	household.NameValidator = householdDescName.Validators[0].(func(string) error)
+	// householdDescBaseCurrency is the schema descriptor for base_currency field.
+	householdDescBaseCurrency := householdFields[1].Descriptor()
+	// household.DefaultBaseCurrency holds the default value on creation for the base_currency field.
+	household.DefaultBaseCurrency = householdDescBaseCurrency.Default.(string)
+	// household.BaseCurrencyValidator is a validator for the "base_currency" field. It is called by the builders before save.
+	household.BaseCurrencyValidator = householdDescBaseCurrency.Validators[0].(func(string) error)
+	// householdDescCreatedAt is the schema descriptor for created_at field.
+	householdDescCreatedAt := householdFields[2].Descriptor()
+	// household.DefaultCreatedAt holds the default value on creation for the created_at field.
+	household.DefaultCreatedAt = householdDescCreatedAt.Default.(func() time.Time)
+	householdmemberFields := schema.HouseholdMember{}.Fields()
+	_ = householdmemberFields
+	// householdmemberDescJoinedAt is the schema descriptor for joined_at field.
+	householdmemberDescJoinedAt := householdmemberFields[1].Descriptor()
+	// householdmember.DefaultJoinedAt holds the default value on creation for the joined_at field.
+	householdmember.DefaultJoinedAt = householdmemberDescJoinedAt.Default.(func() time.Time)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescName is the schema descriptor for name field.

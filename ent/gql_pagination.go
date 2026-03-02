@@ -11,6 +11,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/errcode"
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/category"
+	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
 	"github.com/expenser/expense-planner/ent/user"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -94,6 +98,1002 @@ func paginateLimit(first, last *int) int {
 		limit = *last + 1
 	}
 	return limit
+}
+
+// AccountEdge is the edge representation of Account.
+type AccountEdge struct {
+	Node   *Account `json:"node"`
+	Cursor Cursor   `json:"cursor"`
+}
+
+// AccountConnection is the connection containing edges to Account.
+type AccountConnection struct {
+	Edges      []*AccountEdge `json:"edges"`
+	PageInfo   PageInfo       `json:"pageInfo"`
+	TotalCount int            `json:"totalCount"`
+}
+
+func (c *AccountConnection) build(nodes []*Account, pager *accountPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Account
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Account {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Account {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*AccountEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &AccountEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// AccountPaginateOption enables pagination customization.
+type AccountPaginateOption func(*accountPager) error
+
+// WithAccountOrder configures pagination ordering.
+func WithAccountOrder(order *AccountOrder) AccountPaginateOption {
+	if order == nil {
+		order = DefaultAccountOrder
+	}
+	o := *order
+	return func(pager *accountPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultAccountOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithAccountFilter configures pagination filter.
+func WithAccountFilter(filter func(*AccountQuery) (*AccountQuery, error)) AccountPaginateOption {
+	return func(pager *accountPager) error {
+		if filter == nil {
+			return errors.New("AccountQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type accountPager struct {
+	reverse bool
+	order   *AccountOrder
+	filter  func(*AccountQuery) (*AccountQuery, error)
+}
+
+func newAccountPager(opts []AccountPaginateOption, reverse bool) (*accountPager, error) {
+	pager := &accountPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultAccountOrder
+	}
+	return pager, nil
+}
+
+func (p *accountPager) applyFilter(query *AccountQuery) (*AccountQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *accountPager) toCursor(_m *Account) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *accountPager) applyCursors(query *AccountQuery, after, before *Cursor) (*AccountQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultAccountOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *accountPager) applyOrder(query *AccountQuery) *AccountQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultAccountOrder.Field {
+		query = query.Order(DefaultAccountOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *accountPager) orderExpr(query *AccountQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultAccountOrder.Field {
+			b.Comma().Ident(DefaultAccountOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Account.
+func (_m *AccountQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...AccountPaginateOption,
+) (*AccountConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newAccountPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &AccountConnection{Edges: []*AccountEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// AccountOrderField defines the ordering field of Account.
+type AccountOrderField struct {
+	// Value extracts the ordering value from the given Account.
+	Value    func(*Account) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) account.OrderOption
+	toCursor func(*Account) Cursor
+}
+
+// AccountOrder defines the ordering of Account.
+type AccountOrder struct {
+	Direction OrderDirection     `json:"direction"`
+	Field     *AccountOrderField `json:"field"`
+}
+
+// DefaultAccountOrder is the default ordering of Account.
+var DefaultAccountOrder = &AccountOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &AccountOrderField{
+		Value: func(_m *Account) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: account.FieldID,
+		toTerm: account.ByID,
+		toCursor: func(_m *Account) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts Account into AccountEdge.
+func (_m *Account) ToEdge(order *AccountOrder) *AccountEdge {
+	if order == nil {
+		order = DefaultAccountOrder
+	}
+	return &AccountEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// CategoryEdge is the edge representation of Category.
+type CategoryEdge struct {
+	Node   *Category `json:"node"`
+	Cursor Cursor    `json:"cursor"`
+}
+
+// CategoryConnection is the connection containing edges to Category.
+type CategoryConnection struct {
+	Edges      []*CategoryEdge `json:"edges"`
+	PageInfo   PageInfo        `json:"pageInfo"`
+	TotalCount int             `json:"totalCount"`
+}
+
+func (c *CategoryConnection) build(nodes []*Category, pager *categoryPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Category
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Category {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Category {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*CategoryEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &CategoryEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// CategoryPaginateOption enables pagination customization.
+type CategoryPaginateOption func(*categoryPager) error
+
+// WithCategoryOrder configures pagination ordering.
+func WithCategoryOrder(order *CategoryOrder) CategoryPaginateOption {
+	if order == nil {
+		order = DefaultCategoryOrder
+	}
+	o := *order
+	return func(pager *categoryPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultCategoryOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithCategoryFilter configures pagination filter.
+func WithCategoryFilter(filter func(*CategoryQuery) (*CategoryQuery, error)) CategoryPaginateOption {
+	return func(pager *categoryPager) error {
+		if filter == nil {
+			return errors.New("CategoryQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type categoryPager struct {
+	reverse bool
+	order   *CategoryOrder
+	filter  func(*CategoryQuery) (*CategoryQuery, error)
+}
+
+func newCategoryPager(opts []CategoryPaginateOption, reverse bool) (*categoryPager, error) {
+	pager := &categoryPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultCategoryOrder
+	}
+	return pager, nil
+}
+
+func (p *categoryPager) applyFilter(query *CategoryQuery) (*CategoryQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *categoryPager) toCursor(_m *Category) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *categoryPager) applyCursors(query *CategoryQuery, after, before *Cursor) (*CategoryQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultCategoryOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *categoryPager) applyOrder(query *CategoryQuery) *CategoryQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultCategoryOrder.Field {
+		query = query.Order(DefaultCategoryOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *categoryPager) orderExpr(query *CategoryQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultCategoryOrder.Field {
+			b.Comma().Ident(DefaultCategoryOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Category.
+func (_m *CategoryQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...CategoryPaginateOption,
+) (*CategoryConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newCategoryPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &CategoryConnection{Edges: []*CategoryEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// CategoryOrderField defines the ordering field of Category.
+type CategoryOrderField struct {
+	// Value extracts the ordering value from the given Category.
+	Value    func(*Category) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) category.OrderOption
+	toCursor func(*Category) Cursor
+}
+
+// CategoryOrder defines the ordering of Category.
+type CategoryOrder struct {
+	Direction OrderDirection      `json:"direction"`
+	Field     *CategoryOrderField `json:"field"`
+}
+
+// DefaultCategoryOrder is the default ordering of Category.
+var DefaultCategoryOrder = &CategoryOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &CategoryOrderField{
+		Value: func(_m *Category) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: category.FieldID,
+		toTerm: category.ByID,
+		toCursor: func(_m *Category) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts Category into CategoryEdge.
+func (_m *Category) ToEdge(order *CategoryOrder) *CategoryEdge {
+	if order == nil {
+		order = DefaultCategoryOrder
+	}
+	return &CategoryEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// HouseholdEdge is the edge representation of Household.
+type HouseholdEdge struct {
+	Node   *Household `json:"node"`
+	Cursor Cursor     `json:"cursor"`
+}
+
+// HouseholdConnection is the connection containing edges to Household.
+type HouseholdConnection struct {
+	Edges      []*HouseholdEdge `json:"edges"`
+	PageInfo   PageInfo         `json:"pageInfo"`
+	TotalCount int              `json:"totalCount"`
+}
+
+func (c *HouseholdConnection) build(nodes []*Household, pager *householdPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *Household
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *Household {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *Household {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*HouseholdEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &HouseholdEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// HouseholdPaginateOption enables pagination customization.
+type HouseholdPaginateOption func(*householdPager) error
+
+// WithHouseholdOrder configures pagination ordering.
+func WithHouseholdOrder(order *HouseholdOrder) HouseholdPaginateOption {
+	if order == nil {
+		order = DefaultHouseholdOrder
+	}
+	o := *order
+	return func(pager *householdPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultHouseholdOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithHouseholdFilter configures pagination filter.
+func WithHouseholdFilter(filter func(*HouseholdQuery) (*HouseholdQuery, error)) HouseholdPaginateOption {
+	return func(pager *householdPager) error {
+		if filter == nil {
+			return errors.New("HouseholdQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type householdPager struct {
+	reverse bool
+	order   *HouseholdOrder
+	filter  func(*HouseholdQuery) (*HouseholdQuery, error)
+}
+
+func newHouseholdPager(opts []HouseholdPaginateOption, reverse bool) (*householdPager, error) {
+	pager := &householdPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultHouseholdOrder
+	}
+	return pager, nil
+}
+
+func (p *householdPager) applyFilter(query *HouseholdQuery) (*HouseholdQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *householdPager) toCursor(_m *Household) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *householdPager) applyCursors(query *HouseholdQuery, after, before *Cursor) (*HouseholdQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultHouseholdOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *householdPager) applyOrder(query *HouseholdQuery) *HouseholdQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultHouseholdOrder.Field {
+		query = query.Order(DefaultHouseholdOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *householdPager) orderExpr(query *HouseholdQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultHouseholdOrder.Field {
+			b.Comma().Ident(DefaultHouseholdOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to Household.
+func (_m *HouseholdQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...HouseholdPaginateOption,
+) (*HouseholdConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newHouseholdPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &HouseholdConnection{Edges: []*HouseholdEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// HouseholdOrderField defines the ordering field of Household.
+type HouseholdOrderField struct {
+	// Value extracts the ordering value from the given Household.
+	Value    func(*Household) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) household.OrderOption
+	toCursor func(*Household) Cursor
+}
+
+// HouseholdOrder defines the ordering of Household.
+type HouseholdOrder struct {
+	Direction OrderDirection       `json:"direction"`
+	Field     *HouseholdOrderField `json:"field"`
+}
+
+// DefaultHouseholdOrder is the default ordering of Household.
+var DefaultHouseholdOrder = &HouseholdOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &HouseholdOrderField{
+		Value: func(_m *Household) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: household.FieldID,
+		toTerm: household.ByID,
+		toCursor: func(_m *Household) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts Household into HouseholdEdge.
+func (_m *Household) ToEdge(order *HouseholdOrder) *HouseholdEdge {
+	if order == nil {
+		order = DefaultHouseholdOrder
+	}
+	return &HouseholdEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// HouseholdMemberEdge is the edge representation of HouseholdMember.
+type HouseholdMemberEdge struct {
+	Node   *HouseholdMember `json:"node"`
+	Cursor Cursor           `json:"cursor"`
+}
+
+// HouseholdMemberConnection is the connection containing edges to HouseholdMember.
+type HouseholdMemberConnection struct {
+	Edges      []*HouseholdMemberEdge `json:"edges"`
+	PageInfo   PageInfo               `json:"pageInfo"`
+	TotalCount int                    `json:"totalCount"`
+}
+
+func (c *HouseholdMemberConnection) build(nodes []*HouseholdMember, pager *householdmemberPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *HouseholdMember
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *HouseholdMember {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *HouseholdMember {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*HouseholdMemberEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &HouseholdMemberEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// HouseholdMemberPaginateOption enables pagination customization.
+type HouseholdMemberPaginateOption func(*householdmemberPager) error
+
+// WithHouseholdMemberOrder configures pagination ordering.
+func WithHouseholdMemberOrder(order *HouseholdMemberOrder) HouseholdMemberPaginateOption {
+	if order == nil {
+		order = DefaultHouseholdMemberOrder
+	}
+	o := *order
+	return func(pager *householdmemberPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultHouseholdMemberOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithHouseholdMemberFilter configures pagination filter.
+func WithHouseholdMemberFilter(filter func(*HouseholdMemberQuery) (*HouseholdMemberQuery, error)) HouseholdMemberPaginateOption {
+	return func(pager *householdmemberPager) error {
+		if filter == nil {
+			return errors.New("HouseholdMemberQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type householdmemberPager struct {
+	reverse bool
+	order   *HouseholdMemberOrder
+	filter  func(*HouseholdMemberQuery) (*HouseholdMemberQuery, error)
+}
+
+func newHouseholdMemberPager(opts []HouseholdMemberPaginateOption, reverse bool) (*householdmemberPager, error) {
+	pager := &householdmemberPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultHouseholdMemberOrder
+	}
+	return pager, nil
+}
+
+func (p *householdmemberPager) applyFilter(query *HouseholdMemberQuery) (*HouseholdMemberQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *householdmemberPager) toCursor(_m *HouseholdMember) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *householdmemberPager) applyCursors(query *HouseholdMemberQuery, after, before *Cursor) (*HouseholdMemberQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultHouseholdMemberOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *householdmemberPager) applyOrder(query *HouseholdMemberQuery) *HouseholdMemberQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultHouseholdMemberOrder.Field {
+		query = query.Order(DefaultHouseholdMemberOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *householdmemberPager) orderExpr(query *HouseholdMemberQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultHouseholdMemberOrder.Field {
+			b.Comma().Ident(DefaultHouseholdMemberOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to HouseholdMember.
+func (_m *HouseholdMemberQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...HouseholdMemberPaginateOption,
+) (*HouseholdMemberConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newHouseholdMemberPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &HouseholdMemberConnection{Edges: []*HouseholdMemberEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// HouseholdMemberOrderField defines the ordering field of HouseholdMember.
+type HouseholdMemberOrderField struct {
+	// Value extracts the ordering value from the given HouseholdMember.
+	Value    func(*HouseholdMember) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) householdmember.OrderOption
+	toCursor func(*HouseholdMember) Cursor
+}
+
+// HouseholdMemberOrder defines the ordering of HouseholdMember.
+type HouseholdMemberOrder struct {
+	Direction OrderDirection             `json:"direction"`
+	Field     *HouseholdMemberOrderField `json:"field"`
+}
+
+// DefaultHouseholdMemberOrder is the default ordering of HouseholdMember.
+var DefaultHouseholdMemberOrder = &HouseholdMemberOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &HouseholdMemberOrderField{
+		Value: func(_m *HouseholdMember) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: householdmember.FieldID,
+		toTerm: householdmember.ByID,
+		toCursor: func(_m *HouseholdMember) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts HouseholdMember into HouseholdMemberEdge.
+func (_m *HouseholdMember) ToEdge(order *HouseholdMemberOrder) *HouseholdMemberEdge {
+	if order == nil {
+		order = DefaultHouseholdMemberOrder
+	}
+	return &HouseholdMemberEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
 }
 
 // PlaceholderEdge is the edge representation of Placeholder.

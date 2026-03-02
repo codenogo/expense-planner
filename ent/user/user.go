@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -23,8 +24,17 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgeMembers holds the string denoting the members edge name in mutations.
+	EdgeMembers = "members"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// MembersTable is the table that holds the members relation/edge.
+	MembersTable = "household_members"
+	// MembersInverseTable is the table name for the HouseholdMember entity.
+	// It exists in this package in order to avoid circular dependency with the "householdmember" package.
+	MembersInverseTable = "household_members"
+	// MembersColumn is the table column denoting the members relation/edge.
+	MembersColumn = "user_members"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -91,4 +101,25 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByMembersCount orders the results by members count.
+func ByMembersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMembersStep(), opts...)
+	}
+}
+
+// ByMembers orders the results by members terms.
+func ByMembers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMembersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newMembersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MembersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MembersTable, MembersColumn),
+	)
 }

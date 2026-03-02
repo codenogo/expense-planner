@@ -4,7 +4,342 @@ package ent
 
 import (
 	"time"
+
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/householdmember"
 )
+
+// CreateAccountInput represents a mutation input for creating accounts.
+type CreateAccountInput struct {
+	Name         string
+	Type         account.Type
+	BalanceCents *int64
+	CreatedAt    *time.Time
+	HouseholdID  int
+}
+
+// Mutate applies the CreateAccountInput on the AccountMutation builder.
+func (i *CreateAccountInput) Mutate(m *AccountMutation) {
+	m.SetName(i.Name)
+	m.SetType(i.Type)
+	if v := i.BalanceCents; v != nil {
+		m.SetBalanceCents(*v)
+	}
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+}
+
+// SetInput applies the change-set in the CreateAccountInput on the AccountCreate builder.
+func (c *AccountCreate) SetInput(i CreateAccountInput) *AccountCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateAccountInput represents a mutation input for updating accounts.
+type UpdateAccountInput struct {
+	Name         *string
+	Type         *account.Type
+	BalanceCents *int64
+	HouseholdID  *int
+}
+
+// Mutate applies the UpdateAccountInput on the AccountMutation builder.
+func (i *UpdateAccountInput) Mutate(m *AccountMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.Type; v != nil {
+		m.SetType(*v)
+	}
+	if v := i.BalanceCents; v != nil {
+		m.SetBalanceCents(*v)
+	}
+	if v := i.HouseholdID; v != nil {
+		m.SetHouseholdID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateAccountInput on the AccountUpdate builder.
+func (c *AccountUpdate) SetInput(i UpdateAccountInput) *AccountUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateAccountInput on the AccountUpdateOne builder.
+func (c *AccountUpdateOne) SetInput(i UpdateAccountInput) *AccountUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateCategoryInput represents a mutation input for creating categories.
+type CreateCategoryInput struct {
+	Name        string
+	Icon        *string
+	Color       *string
+	IsSystem    *bool
+	CreatedAt   *time.Time
+	HouseholdID int
+	ParentID    *int
+	ChildIDs    []int
+}
+
+// Mutate applies the CreateCategoryInput on the CategoryMutation builder.
+func (i *CreateCategoryInput) Mutate(m *CategoryMutation) {
+	m.SetName(i.Name)
+	if v := i.Icon; v != nil {
+		m.SetIcon(*v)
+	}
+	if v := i.Color; v != nil {
+		m.SetColor(*v)
+	}
+	if v := i.IsSystem; v != nil {
+		m.SetIsSystem(*v)
+	}
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+	if v := i.ParentID; v != nil {
+		m.SetParentID(*v)
+	}
+	if v := i.ChildIDs; len(v) > 0 {
+		m.AddChildIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateCategoryInput on the CategoryCreate builder.
+func (c *CategoryCreate) SetInput(i CreateCategoryInput) *CategoryCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateCategoryInput represents a mutation input for updating categories.
+type UpdateCategoryInput struct {
+	Name           *string
+	ClearIcon      bool
+	Icon           *string
+	ClearColor     bool
+	Color          *string
+	IsSystem       *bool
+	HouseholdID    *int
+	ClearParent    bool
+	ParentID       *int
+	ClearChildren  bool
+	AddChildIDs    []int
+	RemoveChildIDs []int
+}
+
+// Mutate applies the UpdateCategoryInput on the CategoryMutation builder.
+func (i *UpdateCategoryInput) Mutate(m *CategoryMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if i.ClearIcon {
+		m.ClearIcon()
+	}
+	if v := i.Icon; v != nil {
+		m.SetIcon(*v)
+	}
+	if i.ClearColor {
+		m.ClearColor()
+	}
+	if v := i.Color; v != nil {
+		m.SetColor(*v)
+	}
+	if v := i.IsSystem; v != nil {
+		m.SetIsSystem(*v)
+	}
+	if v := i.HouseholdID; v != nil {
+		m.SetHouseholdID(*v)
+	}
+	if i.ClearParent {
+		m.ClearParent()
+	}
+	if v := i.ParentID; v != nil {
+		m.SetParentID(*v)
+	}
+	if i.ClearChildren {
+		m.ClearChildren()
+	}
+	if v := i.AddChildIDs; len(v) > 0 {
+		m.AddChildIDs(v...)
+	}
+	if v := i.RemoveChildIDs; len(v) > 0 {
+		m.RemoveChildIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateCategoryInput on the CategoryUpdate builder.
+func (c *CategoryUpdate) SetInput(i UpdateCategoryInput) *CategoryUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateCategoryInput on the CategoryUpdateOne builder.
+func (c *CategoryUpdateOne) SetInput(i UpdateCategoryInput) *CategoryUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateHouseholdInput represents a mutation input for creating households.
+type CreateHouseholdInput struct {
+	Name         string
+	BaseCurrency *string
+	CreatedAt    *time.Time
+	MemberIDs    []int
+	AccountIDs   []int
+	CategoryIDs  []int
+}
+
+// Mutate applies the CreateHouseholdInput on the HouseholdMutation builder.
+func (i *CreateHouseholdInput) Mutate(m *HouseholdMutation) {
+	m.SetName(i.Name)
+	if v := i.BaseCurrency; v != nil {
+		m.SetBaseCurrency(*v)
+	}
+	if v := i.CreatedAt; v != nil {
+		m.SetCreatedAt(*v)
+	}
+	if v := i.MemberIDs; len(v) > 0 {
+		m.AddMemberIDs(v...)
+	}
+	if v := i.AccountIDs; len(v) > 0 {
+		m.AddAccountIDs(v...)
+	}
+	if v := i.CategoryIDs; len(v) > 0 {
+		m.AddCategoryIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the CreateHouseholdInput on the HouseholdCreate builder.
+func (c *HouseholdCreate) SetInput(i CreateHouseholdInput) *HouseholdCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateHouseholdInput represents a mutation input for updating households.
+type UpdateHouseholdInput struct {
+	Name              *string
+	BaseCurrency      *string
+	ClearMembers      bool
+	AddMemberIDs      []int
+	RemoveMemberIDs   []int
+	ClearAccounts     bool
+	AddAccountIDs     []int
+	RemoveAccountIDs  []int
+	ClearCategories   bool
+	AddCategoryIDs    []int
+	RemoveCategoryIDs []int
+}
+
+// Mutate applies the UpdateHouseholdInput on the HouseholdMutation builder.
+func (i *UpdateHouseholdInput) Mutate(m *HouseholdMutation) {
+	if v := i.Name; v != nil {
+		m.SetName(*v)
+	}
+	if v := i.BaseCurrency; v != nil {
+		m.SetBaseCurrency(*v)
+	}
+	if i.ClearMembers {
+		m.ClearMembers()
+	}
+	if v := i.AddMemberIDs; len(v) > 0 {
+		m.AddMemberIDs(v...)
+	}
+	if v := i.RemoveMemberIDs; len(v) > 0 {
+		m.RemoveMemberIDs(v...)
+	}
+	if i.ClearAccounts {
+		m.ClearAccounts()
+	}
+	if v := i.AddAccountIDs; len(v) > 0 {
+		m.AddAccountIDs(v...)
+	}
+	if v := i.RemoveAccountIDs; len(v) > 0 {
+		m.RemoveAccountIDs(v...)
+	}
+	if i.ClearCategories {
+		m.ClearCategories()
+	}
+	if v := i.AddCategoryIDs; len(v) > 0 {
+		m.AddCategoryIDs(v...)
+	}
+	if v := i.RemoveCategoryIDs; len(v) > 0 {
+		m.RemoveCategoryIDs(v...)
+	}
+}
+
+// SetInput applies the change-set in the UpdateHouseholdInput on the HouseholdUpdate builder.
+func (c *HouseholdUpdate) SetInput(i UpdateHouseholdInput) *HouseholdUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateHouseholdInput on the HouseholdUpdateOne builder.
+func (c *HouseholdUpdateOne) SetInput(i UpdateHouseholdInput) *HouseholdUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// CreateHouseholdMemberInput represents a mutation input for creating householdmembers.
+type CreateHouseholdMemberInput struct {
+	Role        *householdmember.Role
+	JoinedAt    *time.Time
+	HouseholdID int
+	UserID      int
+}
+
+// Mutate applies the CreateHouseholdMemberInput on the HouseholdMemberMutation builder.
+func (i *CreateHouseholdMemberInput) Mutate(m *HouseholdMemberMutation) {
+	if v := i.Role; v != nil {
+		m.SetRole(*v)
+	}
+	if v := i.JoinedAt; v != nil {
+		m.SetJoinedAt(*v)
+	}
+	m.SetHouseholdID(i.HouseholdID)
+	m.SetUserID(i.UserID)
+}
+
+// SetInput applies the change-set in the CreateHouseholdMemberInput on the HouseholdMemberCreate builder.
+func (c *HouseholdMemberCreate) SetInput(i CreateHouseholdMemberInput) *HouseholdMemberCreate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// UpdateHouseholdMemberInput represents a mutation input for updating householdmembers.
+type UpdateHouseholdMemberInput struct {
+	Role        *householdmember.Role
+	HouseholdID *int
+	UserID      *int
+}
+
+// Mutate applies the UpdateHouseholdMemberInput on the HouseholdMemberMutation builder.
+func (i *UpdateHouseholdMemberInput) Mutate(m *HouseholdMemberMutation) {
+	if v := i.Role; v != nil {
+		m.SetRole(*v)
+	}
+	if v := i.HouseholdID; v != nil {
+		m.SetHouseholdID(*v)
+	}
+	if v := i.UserID; v != nil {
+		m.SetUserID(*v)
+	}
+}
+
+// SetInput applies the change-set in the UpdateHouseholdMemberInput on the HouseholdMemberUpdate builder.
+func (c *HouseholdMemberUpdate) SetInput(i UpdateHouseholdMemberInput) *HouseholdMemberUpdate {
+	i.Mutate(c.Mutation())
+	return c
+}
+
+// SetInput applies the change-set in the UpdateHouseholdMemberInput on the HouseholdMemberUpdateOne builder.
+func (c *HouseholdMemberUpdateOne) SetInput(i UpdateHouseholdMemberInput) *HouseholdMemberUpdateOne {
+	i.Mutate(c.Mutation())
+	return c
+}
 
 // CreateUserInput represents a mutation input for creating users.
 type CreateUserInput struct {
@@ -12,6 +347,7 @@ type CreateUserInput struct {
 	Email     string
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
+	MemberIDs []int
 }
 
 // Mutate applies the CreateUserInput on the UserMutation builder.
@@ -24,6 +360,9 @@ func (i *CreateUserInput) Mutate(m *UserMutation) {
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
 	}
+	if v := i.MemberIDs; len(v) > 0 {
+		m.AddMemberIDs(v...)
+	}
 }
 
 // SetInput applies the change-set in the CreateUserInput on the UserCreate builder.
@@ -34,9 +373,12 @@ func (c *UserCreate) SetInput(i CreateUserInput) *UserCreate {
 
 // UpdateUserInput represents a mutation input for updating users.
 type UpdateUserInput struct {
-	Name      *string
-	Email     *string
-	UpdatedAt *time.Time
+	Name            *string
+	Email           *string
+	UpdatedAt       *time.Time
+	ClearMembers    bool
+	AddMemberIDs    []int
+	RemoveMemberIDs []int
 }
 
 // Mutate applies the UpdateUserInput on the UserMutation builder.
@@ -49,6 +391,15 @@ func (i *UpdateUserInput) Mutate(m *UserMutation) {
 	}
 	if v := i.UpdatedAt; v != nil {
 		m.SetUpdatedAt(*v)
+	}
+	if i.ClearMembers {
+		m.ClearMembers()
+	}
+	if v := i.AddMemberIDs; len(v) > 0 {
+		m.AddMemberIDs(v...)
+	}
+	if v := i.RemoveMemberIDs; len(v) > 0 {
+		m.RemoveMemberIDs(v...)
 	}
 }
 

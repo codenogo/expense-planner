@@ -1,3 +1,5 @@
+scalar Time
+
 extend type Query {
   """Health check endpoint."""
   health: Boolean!
@@ -12,6 +14,9 @@ type Mutation {
 
   """Get a new access token using a refresh token."""
   refreshToken(token: String!): AuthPayload!
+
+  """Create a new household. The authenticated user is automatically added as the owner."""
+  createHousehold(input: CreateHouseholdInput!): Household!
 }
 
 input RegisterInput {

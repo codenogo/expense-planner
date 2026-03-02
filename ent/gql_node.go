@@ -13,6 +13,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/category"
+	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
 	"github.com/expenser/expense-planner/ent/user"
 	"github.com/hashicorp/go-multierror"
@@ -23,6 +27,26 @@ import (
 type Noder interface {
 	IsNode()
 }
+
+var accountImplementors = []string{"Account", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Account) IsNode() {}
+
+var categoryImplementors = []string{"Category", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Category) IsNode() {}
+
+var householdImplementors = []string{"Household", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Household) IsNode() {}
+
+var householdmemberImplementors = []string{"HouseholdMember", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*HouseholdMember) IsNode() {}
 
 var placeholderImplementors = []string{"Placeholder", "Node"}
 
@@ -92,6 +116,42 @@ func (c *Client) Noder(ctx context.Context, id int, opts ...NodeOption) (_ Noder
 
 func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error) {
 	switch table {
+	case account.Table:
+		query := c.Account.Query().
+			Where(account.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, accountImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case category.Table:
+		query := c.Category.Query().
+			Where(category.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, categoryImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case household.Table:
+		query := c.Household.Query().
+			Where(household.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, householdImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case householdmember.Table:
+		query := c.HouseholdMember.Query().
+			Where(householdmember.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, householdmemberImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
 	case placeholder.Table:
 		query := c.Placeholder.Query().
 			Where(placeholder.ID(id))
@@ -183,6 +243,70 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		idmap[id] = append(idmap[id], &noders[i])
 	}
 	switch table {
+	case account.Table:
+		query := c.Account.Query().
+			Where(account.IDIn(ids...))
+		query, err := query.CollectFields(ctx, accountImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case category.Table:
+		query := c.Category.Query().
+			Where(category.IDIn(ids...))
+		query, err := query.CollectFields(ctx, categoryImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case household.Table:
+		query := c.Household.Query().
+			Where(household.IDIn(ids...))
+		query, err := query.CollectFields(ctx, householdImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case householdmember.Table:
+		query := c.HouseholdMember.Query().
+			Where(householdmember.IDIn(ids...))
+		query, err := query.CollectFields(ctx, householdmemberImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
 	case placeholder.Table:
 		query := c.Placeholder.Query().
 			Where(placeholder.IDIn(ids...))

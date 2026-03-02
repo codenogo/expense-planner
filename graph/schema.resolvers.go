@@ -9,8 +9,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/expenser/expense-planner/ent"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/user"
 	"github.com/expenser/expense-planner/graph/model"
+	"github.com/expenser/expense-planner/internal/middleware"
 	"github.com/expenser/expense-planner/internal/service"
 )
 
@@ -99,6 +102,32 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, token string) (*mod
 		RefreshToken: newRefresh,
 		User:         u,
 	}, nil
+}
+
+// CreateHousehold is the resolver for the createHousehold field.
+func (r *mutationResolver) CreateHousehold(ctx context.Context, input ent.CreateHouseholdInput) (*ent.Household, error) {
+	uc := middleware.UserFromContext(ctx)
+	if uc == nil {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	h, err := r.Client.Household.Create().
+		SetInput(input).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("creating household: %w", err)
+	}
+
+	_, err = r.Client.HouseholdMember.Create().
+		SetHouseholdID(h.ID).
+		SetUserID(uc.UserID).
+		SetRole(householdmember.RoleOwner).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("adding owner member: %w", err)
+	}
+
+	return h, nil
 }
 
 // Health is the resolver for the health field.

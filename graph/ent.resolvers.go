@@ -21,6 +21,26 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []int) ([]ent.Noder, erro
 	return r.Client.Noders(ctx, ids)
 }
 
+// Accounts is the resolver for the accounts field.
+func (r *queryResolver) Accounts(ctx context.Context) ([]*ent.Account, error) {
+	return r.Client.Account.Query().All(ctx)
+}
+
+// Categories is the resolver for the categories field.
+func (r *queryResolver) Categories(ctx context.Context) ([]*ent.Category, error) {
+	return r.Client.Category.Query().All(ctx)
+}
+
+// Households is the resolver for the households field.
+func (r *queryResolver) Households(ctx context.Context) ([]*ent.Household, error) {
+	return r.Client.Household.Query().All(ctx)
+}
+
+// HouseholdMembers is the resolver for the householdMembers field.
+func (r *queryResolver) HouseholdMembers(ctx context.Context) ([]*ent.HouseholdMember, error) {
+	return r.Client.HouseholdMember.Query().All(ctx)
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
 	return r.Client.User.Query().All(ctx)

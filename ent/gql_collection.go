@@ -6,8 +6,425 @@ import (
 	"context"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/category"
+	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/user"
 )
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *AccountQuery) CollectFields(ctx context.Context, satisfies ...string) (*AccountQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *AccountQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(account.Columns))
+		selectedFields = []string{account.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+		case "name":
+			if _, ok := fieldSeen[account.FieldName]; !ok {
+				selectedFields = append(selectedFields, account.FieldName)
+				fieldSeen[account.FieldName] = struct{}{}
+			}
+		case "type":
+			if _, ok := fieldSeen[account.FieldType]; !ok {
+				selectedFields = append(selectedFields, account.FieldType)
+				fieldSeen[account.FieldType] = struct{}{}
+			}
+		case "balanceCents":
+			if _, ok := fieldSeen[account.FieldBalanceCents]; !ok {
+				selectedFields = append(selectedFields, account.FieldBalanceCents)
+				fieldSeen[account.FieldBalanceCents] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[account.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, account.FieldCreatedAt)
+				fieldSeen[account.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type accountPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []AccountPaginateOption
+}
+
+func newAccountPaginateArgs(rv map[string]any) *accountPaginateArgs {
+	args := &accountPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *CategoryQuery) CollectFields(ctx context.Context, satisfies ...string) (*CategoryQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *CategoryQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(category.Columns))
+		selectedFields = []string{category.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "parent":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CategoryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, categoryImplementors)...); err != nil {
+				return err
+			}
+			_q.withParent = query
+
+		case "children":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CategoryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, categoryImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedChildren(alias, func(wq *CategoryQuery) {
+				*wq = *query
+			})
+		case "name":
+			if _, ok := fieldSeen[category.FieldName]; !ok {
+				selectedFields = append(selectedFields, category.FieldName)
+				fieldSeen[category.FieldName] = struct{}{}
+			}
+		case "icon":
+			if _, ok := fieldSeen[category.FieldIcon]; !ok {
+				selectedFields = append(selectedFields, category.FieldIcon)
+				fieldSeen[category.FieldIcon] = struct{}{}
+			}
+		case "color":
+			if _, ok := fieldSeen[category.FieldColor]; !ok {
+				selectedFields = append(selectedFields, category.FieldColor)
+				fieldSeen[category.FieldColor] = struct{}{}
+			}
+		case "isSystem":
+			if _, ok := fieldSeen[category.FieldIsSystem]; !ok {
+				selectedFields = append(selectedFields, category.FieldIsSystem)
+				fieldSeen[category.FieldIsSystem] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[category.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, category.FieldCreatedAt)
+				fieldSeen[category.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type categoryPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []CategoryPaginateOption
+}
+
+func newCategoryPaginateArgs(rv map[string]any) *categoryPaginateArgs {
+	args := &categoryPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *HouseholdQuery) CollectFields(ctx context.Context, satisfies ...string) (*HouseholdQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *HouseholdQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(household.Columns))
+		selectedFields = []string{household.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "members":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdMemberClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, householdmemberImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedMembers(alias, func(wq *HouseholdMemberQuery) {
+				*wq = *query
+			})
+
+		case "accounts":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AccountClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, accountImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedAccounts(alias, func(wq *AccountQuery) {
+				*wq = *query
+			})
+
+		case "categories":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CategoryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, categoryImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedCategories(alias, func(wq *CategoryQuery) {
+				*wq = *query
+			})
+		case "name":
+			if _, ok := fieldSeen[household.FieldName]; !ok {
+				selectedFields = append(selectedFields, household.FieldName)
+				fieldSeen[household.FieldName] = struct{}{}
+			}
+		case "baseCurrency":
+			if _, ok := fieldSeen[household.FieldBaseCurrency]; !ok {
+				selectedFields = append(selectedFields, household.FieldBaseCurrency)
+				fieldSeen[household.FieldBaseCurrency] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[household.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, household.FieldCreatedAt)
+				fieldSeen[household.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type householdPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []HouseholdPaginateOption
+}
+
+func newHouseholdPaginateArgs(rv map[string]any) *householdPaginateArgs {
+	args := &householdPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *HouseholdMemberQuery) CollectFields(ctx context.Context, satisfies ...string) (*HouseholdMemberQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *HouseholdMemberQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(householdmember.Columns))
+		selectedFields = []string{householdmember.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "user":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withUser = query
+		case "role":
+			if _, ok := fieldSeen[householdmember.FieldRole]; !ok {
+				selectedFields = append(selectedFields, householdmember.FieldRole)
+				fieldSeen[householdmember.FieldRole] = struct{}{}
+			}
+		case "joinedAt":
+			if _, ok := fieldSeen[householdmember.FieldJoinedAt]; !ok {
+				selectedFields = append(selectedFields, householdmember.FieldJoinedAt)
+				fieldSeen[householdmember.FieldJoinedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type householdmemberPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []HouseholdMemberPaginateOption
+}
+
+func newHouseholdMemberPaginateArgs(rv map[string]any) *householdmemberPaginateArgs {
+	args := &householdmemberPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (_q *PlaceholderQuery) CollectFields(ctx context.Context, satisfies ...string) (*PlaceholderQuery, error) {
@@ -73,6 +490,19 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 	)
 	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
 		switch field.Name {
+
+		case "members":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdMemberClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, householdmemberImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedMembers(alias, func(wq *HouseholdMemberQuery) {
+				*wq = *query
+			})
 		case "name":
 			if _, ok := fieldSeen[user.FieldName]; !ok {
 				selectedFields = append(selectedFields, user.FieldName)

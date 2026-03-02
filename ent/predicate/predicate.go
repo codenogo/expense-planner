@@ -6,6 +6,18 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Account is the predicate function for account builders.
+type Account func(*sql.Selector)
+
+// Category is the predicate function for category builders.
+type Category func(*sql.Selector)
+
+// Household is the predicate function for household builders.
+type Household func(*sql.Selector)
+
+// HouseholdMember is the predicate function for householdmember builders.
+type HouseholdMember func(*sql.Selector)
+
 // Placeholder is the predicate function for placeholder builders.
 type Placeholder func(*sql.Selector)
 

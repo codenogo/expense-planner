@@ -9,6 +9,54 @@ import (
 	"github.com/expenser/expense-planner/ent"
 )
 
+// The AccountFunc type is an adapter to allow the use of ordinary
+// function as Account mutator.
+type AccountFunc func(context.Context, *ent.AccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AccountMutation", m)
+}
+
+// The CategoryFunc type is an adapter to allow the use of ordinary
+// function as Category mutator.
+type CategoryFunc func(context.Context, *ent.CategoryMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CategoryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CategoryMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CategoryMutation", m)
+}
+
+// The HouseholdFunc type is an adapter to allow the use of ordinary
+// function as Household mutator.
+type HouseholdFunc func(context.Context, *ent.HouseholdMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f HouseholdFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.HouseholdMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HouseholdMutation", m)
+}
+
+// The HouseholdMemberFunc type is an adapter to allow the use of ordinary
+// function as HouseholdMember mutator.
+type HouseholdMemberFunc func(context.Context, *ent.HouseholdMemberMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f HouseholdMemberFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.HouseholdMemberMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HouseholdMemberMutation", m)
+}
+
 // The PlaceholderFunc type is an adapter to allow the use of ordinary
 // function as Placeholder mutator.
 type PlaceholderFunc func(context.Context, *ent.PlaceholderMutation) (ent.Value, error)

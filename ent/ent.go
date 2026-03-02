@@ -12,6 +12,10 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/category"
+	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
 	"github.com/expenser/expense-planner/ent/user"
 )
@@ -74,8 +78,12 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			placeholder.Table: placeholder.ValidColumn,
-			user.Table:        user.ValidColumn,
+			account.Table:         account.ValidColumn,
+			category.Table:        category.ValidColumn,
+			household.Table:       household.ValidColumn,
+			householdmember.Table: householdmember.ValidColumn,
+			placeholder.Table:     placeholder.ValidColumn,
+			user.Table:            user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

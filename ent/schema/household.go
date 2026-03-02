@@ -10,40 +10,36 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-// User holds the schema definition for the User entity.
-type User struct {
+// Household holds the schema definition for the Household entity.
+type Household struct {
 	ent.Schema
 }
 
-// Fields of the User.
-func (User) Fields() []ent.Field {
+// Fields of the Household.
+func (Household) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name").
 			NotEmpty(),
-		field.String("email").
-			Unique().
+		field.String("base_currency").
+			Default("KES").
 			NotEmpty(),
-		field.String("password_hash").
-			Sensitive().
-			Annotations(entgql.Skip(entgql.SkipAll)),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),
-		field.Time("updated_at").
-			Default(time.Now).
-			UpdateDefault(time.Now),
 	}
 }
 
-// Edges of the User.
-func (User) Edges() []ent.Edge {
+// Edges of the Household.
+func (Household) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("members", HouseholdMember.Type),
+		edge.To("accounts", Account.Type),
+		edge.To("categories", Category.Type),
 	}
 }
 
-// Annotations of the User.
-func (User) Annotations() []schema.Annotation {
+// Annotations of the Household.
+func (Household) Annotations() []schema.Annotation {
 	return []schema.Annotation{
 		entgql.QueryField(),
 		entgql.Mutations(entgql.MutationCreate(), entgql.MutationUpdate()),
