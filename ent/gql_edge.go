@@ -16,6 +16,18 @@ func (_m *Account) Household(ctx context.Context) (*Household, error) {
 	return result, err
 }
 
+func (_m *Account) Entries(ctx context.Context) (result []*TransactionEntry, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedEntries(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.EntriesOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryEntries().All(ctx)
+	}
+	return result, err
+}
+
 func (_m *Category) Household(ctx context.Context) (*Household, error) {
 	result, err := _m.Edges.HouseholdOrErr()
 	if IsNotLoaded(err) {
@@ -40,6 +52,18 @@ func (_m *Category) Children(ctx context.Context) (result []*Category, err error
 	}
 	if IsNotLoaded(err) {
 		result, err = _m.QueryChildren().All(ctx)
+	}
+	return result, err
+}
+
+func (_m *Category) Transactions(ctx context.Context) (result []*Transaction, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedTransactions(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.TransactionsOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryTransactions().All(ctx)
 	}
 	return result, err
 }
@@ -80,6 +104,18 @@ func (_m *Household) Categories(ctx context.Context) (result []*Category, err er
 	return result, err
 }
 
+func (_m *Household) Transactions(ctx context.Context) (result []*Transaction, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedTransactions(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.TransactionsOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryTransactions().All(ctx)
+	}
+	return result, err
+}
+
 func (_m *HouseholdMember) Household(ctx context.Context) (*Household, error) {
 	result, err := _m.Edges.HouseholdOrErr()
 	if IsNotLoaded(err) {
@@ -96,6 +132,58 @@ func (_m *HouseholdMember) User(ctx context.Context) (*User, error) {
 	return result, err
 }
 
+func (_m *Transaction) Household(ctx context.Context) (*Household, error) {
+	result, err := _m.Edges.HouseholdOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryHousehold().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *Transaction) CreatedBy(ctx context.Context) (*User, error) {
+	result, err := _m.Edges.CreatedByOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCreatedBy().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *Transaction) Entries(ctx context.Context) (result []*TransactionEntry, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedEntries(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.EntriesOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryEntries().All(ctx)
+	}
+	return result, err
+}
+
+func (_m *Transaction) Category(ctx context.Context) (*Category, error) {
+	result, err := _m.Edges.CategoryOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryCategory().Only(ctx)
+	}
+	return result, MaskNotFound(err)
+}
+
+func (_m *TransactionEntry) Transaction(ctx context.Context) (*Transaction, error) {
+	result, err := _m.Edges.TransactionOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryTransaction().Only(ctx)
+	}
+	return result, err
+}
+
+func (_m *TransactionEntry) Account(ctx context.Context) (*Account, error) {
+	result, err := _m.Edges.AccountOrErr()
+	if IsNotLoaded(err) {
+		result, err = _m.QueryAccount().Only(ctx)
+	}
+	return result, err
+}
+
 func (_m *User) Members(ctx context.Context) (result []*HouseholdMember, err error) {
 	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
 		result, err = _m.NamedMembers(graphql.GetFieldContext(ctx).Field.Alias)
@@ -104,6 +192,18 @@ func (_m *User) Members(ctx context.Context) (result []*HouseholdMember, err err
 	}
 	if IsNotLoaded(err) {
 		result, err = _m.QueryMembers().All(ctx)
+	}
+	return result, err
+}
+
+func (_m *User) Transactions(ctx context.Context) (result []*Transaction, err error) {
+	if fc := graphql.GetFieldContext(ctx); fc != nil && fc.Field.Alias != "" {
+		result, err = _m.NamedTransactions(graphql.GetFieldContext(ctx).Field.Alias)
+	} else {
+		result, err = _m.Edges.TransactionsOrErr()
+	}
+	if IsNotLoaded(err) {
+		result, err = _m.QueryTransactions().All(ctx)
 	}
 	return result, err
 }

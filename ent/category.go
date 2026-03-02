@@ -44,13 +44,16 @@ type CategoryEdges struct {
 	Parent *Category `json:"parent,omitempty"`
 	// Children holds the value of the children edge.
 	Children []*Category `json:"children,omitempty"`
+	// Transactions holds the value of the transactions edge.
+	Transactions []*Transaction `json:"transactions,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
 
-	namedChildren map[string][]*Category
+	namedChildren     map[string][]*Category
+	namedTransactions map[string][]*Transaction
 }
 
 // HouseholdOrErr returns the Household value or an error if the edge
@@ -82,6 +85,15 @@ func (e CategoryEdges) ChildrenOrErr() ([]*Category, error) {
 		return e.Children, nil
 	}
 	return nil, &NotLoadedError{edge: "children"}
+}
+
+// TransactionsOrErr returns the Transactions value or an error if the edge
+// was not loaded in eager-loading.
+func (e CategoryEdges) TransactionsOrErr() ([]*Transaction, error) {
+	if e.loadedTypes[3] {
+		return e.Transactions, nil
+	}
+	return nil, &NotLoadedError{edge: "transactions"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -196,6 +208,11 @@ func (_m *Category) QueryChildren() *CategoryQuery {
 	return NewCategoryClient(_m.config).QueryChildren(_m)
 }
 
+// QueryTransactions queries the "transactions" edge of the Category entity.
+func (_m *Category) QueryTransactions() *TransactionQuery {
+	return NewCategoryClient(_m.config).QueryTransactions(_m)
+}
+
 // Update returns a builder for updating this Category.
 // Note that you need to call Category.Unwrap() before calling this method if this Category
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -262,6 +279,30 @@ func (_m *Category) appendNamedChildren(name string, edges ...*Category) {
 		_m.Edges.namedChildren[name] = []*Category{}
 	} else {
 		_m.Edges.namedChildren[name] = append(_m.Edges.namedChildren[name], edges...)
+	}
+}
+
+// NamedTransactions returns the Transactions named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Category) NamedTransactions(name string) ([]*Transaction, error) {
+	if _m.Edges.namedTransactions == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTransactions[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Category) appendNamedTransactions(name string, edges ...*Transaction) {
+	if _m.Edges.namedTransactions == nil {
+		_m.Edges.namedTransactions = make(map[string][]*Transaction)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTransactions[name] = []*Transaction{}
+	} else {
+		_m.Edges.namedTransactions[name] = append(_m.Edges.namedTransactions[name], edges...)
 	}
 }
 

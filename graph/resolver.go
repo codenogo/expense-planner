@@ -9,4 +9,5 @@ import (
 type Resolver struct {
 	Client *ent.Client
 	JWT    *service.JWTService
+	TxnSvc *service.TransactionService
 }

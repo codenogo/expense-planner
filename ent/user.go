@@ -37,13 +37,16 @@ type User struct {
 type UserEdges struct {
 	// Members holds the value of the members edge.
 	Members []*HouseholdMember `json:"members,omitempty"`
+	// Transactions holds the value of the transactions edge.
+	Transactions []*Transaction `json:"transactions,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 	// totalCount holds the count of the edges above.
-	totalCount [1]map[string]int
+	totalCount [2]map[string]int
 
-	namedMembers map[string][]*HouseholdMember
+	namedMembers      map[string][]*HouseholdMember
+	namedTransactions map[string][]*Transaction
 }
 
 // MembersOrErr returns the Members value or an error if the edge
@@ -53,6 +56,15 @@ func (e UserEdges) MembersOrErr() ([]*HouseholdMember, error) {
 		return e.Members, nil
 	}
 	return nil, &NotLoadedError{edge: "members"}
+}
+
+// TransactionsOrErr returns the Transactions value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) TransactionsOrErr() ([]*Transaction, error) {
+	if e.loadedTypes[1] {
+		return e.Transactions, nil
+	}
+	return nil, &NotLoadedError{edge: "transactions"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -135,6 +147,11 @@ func (_m *User) QueryMembers() *HouseholdMemberQuery {
 	return NewUserClient(_m.config).QueryMembers(_m)
 }
 
+// QueryTransactions queries the "transactions" edge of the User entity.
+func (_m *User) QueryTransactions() *TransactionQuery {
+	return NewUserClient(_m.config).QueryTransactions(_m)
+}
+
 // Update returns a builder for updating this User.
 // Note that you need to call User.Unwrap() before calling this method if this User
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -196,6 +213,30 @@ func (_m *User) appendNamedMembers(name string, edges ...*HouseholdMember) {
 		_m.Edges.namedMembers[name] = []*HouseholdMember{}
 	} else {
 		_m.Edges.namedMembers[name] = append(_m.Edges.namedMembers[name], edges...)
+	}
+}
+
+// NamedTransactions returns the Transactions named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *User) NamedTransactions(name string) ([]*Transaction, error) {
+	if _m.Edges.namedTransactions == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedTransactions[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *User) appendNamedTransactions(name string, edges ...*Transaction) {
+	if _m.Edges.namedTransactions == nil {
+		_m.Edges.namedTransactions = make(map[string][]*Transaction)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedTransactions[name] = []*Transaction{}
+	} else {
+		_m.Edges.namedTransactions[name] = append(_m.Edges.namedTransactions[name], edges...)
 	}
 }
 

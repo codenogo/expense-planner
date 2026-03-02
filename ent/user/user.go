@@ -26,6 +26,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeMembers holds the string denoting the members edge name in mutations.
 	EdgeMembers = "members"
+	// EdgeTransactions holds the string denoting the transactions edge name in mutations.
+	EdgeTransactions = "transactions"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// MembersTable is the table that holds the members relation/edge.
@@ -35,6 +37,13 @@ const (
 	MembersInverseTable = "household_members"
 	// MembersColumn is the table column denoting the members relation/edge.
 	MembersColumn = "user_members"
+	// TransactionsTable is the table that holds the transactions relation/edge.
+	TransactionsTable = "transactions"
+	// TransactionsInverseTable is the table name for the Transaction entity.
+	// It exists in this package in order to avoid circular dependency with the "transaction" package.
+	TransactionsInverseTable = "transactions"
+	// TransactionsColumn is the table column denoting the transactions relation/edge.
+	TransactionsColumn = "user_transactions"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -116,10 +125,31 @@ func ByMembers(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newMembersStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByTransactionsCount orders the results by transactions count.
+func ByTransactionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTransactionsStep(), opts...)
+	}
+}
+
+// ByTransactions orders the results by transactions terms.
+func ByTransactions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTransactionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newMembersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(MembersInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, MembersTable, MembersColumn),
+	)
+}
+func newTransactionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TransactionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TransactionsTable, TransactionsColumn),
 	)
 }

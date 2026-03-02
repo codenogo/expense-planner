@@ -120,6 +120,70 @@ var (
 		Columns:    PlaceholdersColumns,
 		PrimaryKey: []*schema.Column{PlaceholdersColumns[0]},
 	}
+	// TransactionsColumns holds the columns for the "transactions" table.
+	TransactionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "description", Type: field.TypeString},
+		{Name: "date", Type: field.TypeTime},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "posted"}, Default: "posted"},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "category_transactions", Type: field.TypeInt, Nullable: true},
+		{Name: "household_transactions", Type: field.TypeInt},
+		{Name: "user_transactions", Type: field.TypeInt},
+	}
+	// TransactionsTable holds the schema information for the "transactions" table.
+	TransactionsTable = &schema.Table{
+		Name:       "transactions",
+		Columns:    TransactionsColumns,
+		PrimaryKey: []*schema.Column{TransactionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "transactions_categories_transactions",
+				Columns:    []*schema.Column{TransactionsColumns[5]},
+				RefColumns: []*schema.Column{CategoriesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "transactions_households_transactions",
+				Columns:    []*schema.Column{TransactionsColumns[6]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "transactions_users_transactions",
+				Columns:    []*schema.Column{TransactionsColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// TransactionEntriesColumns holds the columns for the "transaction_entries" table.
+	TransactionEntriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "amount_cents", Type: field.TypeInt64},
+		{Name: "account_entries", Type: field.TypeInt},
+		{Name: "transaction_entries", Type: field.TypeInt},
+	}
+	// TransactionEntriesTable holds the schema information for the "transaction_entries" table.
+	TransactionEntriesTable = &schema.Table{
+		Name:       "transaction_entries",
+		Columns:    TransactionEntriesColumns,
+		PrimaryKey: []*schema.Column{TransactionEntriesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "transaction_entries_accounts_entries",
+				Columns:    []*schema.Column{TransactionEntriesColumns[2]},
+				RefColumns: []*schema.Column{AccountsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "transaction_entries_transactions_entries",
+				Columns:    []*schema.Column{TransactionEntriesColumns[3]},
+				RefColumns: []*schema.Column{TransactionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -142,6 +206,8 @@ var (
 		HouseholdsTable,
 		HouseholdMembersTable,
 		PlaceholdersTable,
+		TransactionsTable,
+		TransactionEntriesTable,
 		UsersTable,
 	}
 )
@@ -152,4 +218,9 @@ func init() {
 	CategoriesTable.ForeignKeys[1].RefTable = HouseholdsTable
 	HouseholdMembersTable.ForeignKeys[0].RefTable = HouseholdsTable
 	HouseholdMembersTable.ForeignKeys[1].RefTable = UsersTable
+	TransactionsTable.ForeignKeys[0].RefTable = CategoriesTable
+	TransactionsTable.ForeignKeys[1].RefTable = HouseholdsTable
+	TransactionsTable.ForeignKeys[2].RefTable = UsersTable
+	TransactionEntriesTable.ForeignKeys[0].RefTable = AccountsTable
+	TransactionEntriesTable.ForeignKeys[1].RefTable = TransactionsTable
 }

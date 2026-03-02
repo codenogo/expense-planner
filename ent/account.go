@@ -37,11 +37,15 @@ type Account struct {
 type AccountEdges struct {
 	// Household holds the value of the household edge.
 	Household *Household `json:"household,omitempty"`
+	// Entries holds the value of the entries edge.
+	Entries []*TransactionEntry `json:"entries,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 	// totalCount holds the count of the edges above.
-	totalCount [1]map[string]int
+	totalCount [2]map[string]int
+
+	namedEntries map[string][]*TransactionEntry
 }
 
 // HouseholdOrErr returns the Household value or an error if the edge
@@ -53,6 +57,15 @@ func (e AccountEdges) HouseholdOrErr() (*Household, error) {
 		return nil, &NotFoundError{label: household.Label}
 	}
 	return nil, &NotLoadedError{edge: "household"}
+}
+
+// EntriesOrErr returns the Entries value or an error if the edge
+// was not loaded in eager-loading.
+func (e AccountEdges) EntriesOrErr() ([]*TransactionEntry, error) {
+	if e.loadedTypes[1] {
+		return e.Entries, nil
+	}
+	return nil, &NotLoadedError{edge: "entries"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -138,6 +151,11 @@ func (_m *Account) QueryHousehold() *HouseholdQuery {
 	return NewAccountClient(_m.config).QueryHousehold(_m)
 }
 
+// QueryEntries queries the "entries" edge of the Account entity.
+func (_m *Account) QueryEntries() *TransactionEntryQuery {
+	return NewAccountClient(_m.config).QueryEntries(_m)
+}
+
 // Update returns a builder for updating this Account.
 // Note that you need to call Account.Unwrap() before calling this method if this Account
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -174,6 +192,30 @@ func (_m *Account) String() string {
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedEntries returns the Entries named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Account) NamedEntries(name string) ([]*TransactionEntry, error) {
+	if _m.Edges.namedEntries == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedEntries[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Account) appendNamedEntries(name string, edges ...*TransactionEntry) {
+	if _m.Edges.namedEntries == nil {
+		_m.Edges.namedEntries = make(map[string][]*TransactionEntry)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedEntries[name] = []*TransactionEntry{}
+	} else {
+		_m.Edges.namedEntries[name] = append(_m.Edges.namedEntries[name], edges...)
+	}
 }
 
 // Accounts is a parsable slice of Account.

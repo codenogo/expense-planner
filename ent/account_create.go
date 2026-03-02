@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/account"
 	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/transactionentry"
 )
 
 // AccountCreate is the builder for creating a Account entity.
@@ -70,6 +71,21 @@ func (_c *AccountCreate) SetHouseholdID(id int) *AccountCreate {
 // SetHousehold sets the "household" edge to the Household entity.
 func (_c *AccountCreate) SetHousehold(v *Household) *AccountCreate {
 	return _c.SetHouseholdID(v.ID)
+}
+
+// AddEntryIDs adds the "entries" edge to the TransactionEntry entity by IDs.
+func (_c *AccountCreate) AddEntryIDs(ids ...int) *AccountCreate {
+	_c.mutation.AddEntryIDs(ids...)
+	return _c
+}
+
+// AddEntries adds the "entries" edges to the TransactionEntry entity.
+func (_c *AccountCreate) AddEntries(v ...*TransactionEntry) *AccountCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddEntryIDs(ids...)
 }
 
 // Mutation returns the AccountMutation object of the builder.
@@ -201,6 +217,22 @@ func (_c *AccountCreate) createSpec() (*Account, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.household_accounts = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.EntriesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

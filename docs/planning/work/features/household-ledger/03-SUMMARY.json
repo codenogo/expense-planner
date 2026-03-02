@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "feature": "household-ledger",
+  "planNumber": "03",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create Household and HouseholdMember ent schemas",
+      "files": [
+        "ent/schema/household.go",
+        "ent/schema/household_member.go",
+        "ent/schema/user.go",
+        "graph/schema.graphqls",
+        "graph/schema.resolvers.go",
+        "graph/ent.resolvers.go",
+        "gqlgen.yml"
+      ]
+    },
+    {
+      "task": "Create Account ent schema with account types",
+      "files": ["ent/schema/account.go"]
+    },
+    {
+      "task": "Create Category ent schema with hierarchical Kenyan presets",
+      "files": ["ent/schema/category.go", "internal/seed/categories.go"]
+    }
+  ],
+  "verification": [
+    {"command": "go generate ./ent", "result": "pass"},
+    {"command": "go build ./...", "result": "pass"},
+    {"command": "go vet ./...", "result": "pass"},
+    {"command": "go test ./...", "result": "pass"}
+  ],
+  "commit": "a1d3c1f",
+  "timestamp": "2026-03-02T01:00:00Z"
+}

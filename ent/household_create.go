@@ -14,6 +14,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/transaction"
 )
 
 // HouseholdCreate is the builder for creating a Household entity.
@@ -100,6 +101,21 @@ func (_c *HouseholdCreate) AddCategories(v ...*Category) *HouseholdCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddCategoryIDs(ids...)
+}
+
+// AddTransactionIDs adds the "transactions" edge to the Transaction entity by IDs.
+func (_c *HouseholdCreate) AddTransactionIDs(ids ...int) *HouseholdCreate {
+	_c.mutation.AddTransactionIDs(ids...)
+	return _c
+}
+
+// AddTransactions adds the "transactions" edges to the Transaction entity.
+func (_c *HouseholdCreate) AddTransactions(v ...*Transaction) *HouseholdCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTransactionIDs(ids...)
 }
 
 // Mutation returns the HouseholdMutation object of the builder.
@@ -247,6 +263,22 @@ func (_c *HouseholdCreate) createSpec() (*Household, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TransactionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.TransactionsTable,
+			Columns: []string{household.TransactionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transaction.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

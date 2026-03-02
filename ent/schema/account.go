@@ -38,6 +38,7 @@ func (Account) Edges() []ent.Edge {
 			Ref("accounts").
 			Unique().
 			Required(),
+		edge.To("entries", TransactionEntry.Type),
 	}
 }
 

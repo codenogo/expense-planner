@@ -37,9 +37,12 @@ func main() {
 	// Create JWT service.
 	jwtSvc := service.NewJWTService(cfg.JWTSecret)
 
+	// Create transaction service.
+	txnSvc := service.NewTransactionService(client)
+
 	// Create GraphQL server.
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc},
+		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc, TxnSvc: txnSvc},
 	}))
 	srv.Use(entgql.Transactioner{TxOpener: client})
 

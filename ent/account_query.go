@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -14,19 +15,22 @@ import (
 	"github.com/expenser/expense-planner/ent/account"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/transactionentry"
 )
 
 // AccountQuery is the builder for querying Account entities.
 type AccountQuery struct {
 	config
-	ctx           *QueryContext
-	order         []account.OrderOption
-	inters        []Interceptor
-	predicates    []predicate.Account
-	withHousehold *HouseholdQuery
-	withFKs       bool
-	modifiers     []func(*sql.Selector)
-	loadTotal     []func(context.Context, []*Account) error
+	ctx              *QueryContext
+	order            []account.OrderOption
+	inters           []Interceptor
+	predicates       []predicate.Account
+	withHousehold    *HouseholdQuery
+	withEntries      *TransactionEntryQuery
+	withFKs          bool
+	modifiers        []func(*sql.Selector)
+	loadTotal        []func(context.Context, []*Account) error
+	withNamedEntries map[string]*TransactionEntryQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,6 +82,28 @@ func (_q *AccountQuery) QueryHousehold() *HouseholdQuery {
 			sqlgraph.From(account.Table, account.FieldID, selector),
 			sqlgraph.To(household.Table, household.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, account.HouseholdTable, account.HouseholdColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryEntries chains the current query on the "entries" edge.
+func (_q *AccountQuery) QueryEntries() *TransactionEntryQuery {
+	query := (&TransactionEntryClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(account.Table, account.FieldID, selector),
+			sqlgraph.To(transactionentry.Table, transactionentry.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, account.EntriesTable, account.EntriesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -278,6 +304,7 @@ func (_q *AccountQuery) Clone() *AccountQuery {
 		inters:        append([]Interceptor{}, _q.inters...),
 		predicates:    append([]predicate.Account{}, _q.predicates...),
 		withHousehold: _q.withHousehold.Clone(),
+		withEntries:   _q.withEntries.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -292,6 +319,17 @@ func (_q *AccountQuery) WithHousehold(opts ...func(*HouseholdQuery)) *AccountQue
 		opt(query)
 	}
 	_q.withHousehold = query
+	return _q
+}
+
+// WithEntries tells the query-builder to eager-load the nodes that are connected to
+// the "entries" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *AccountQuery) WithEntries(opts ...func(*TransactionEntryQuery)) *AccountQuery {
+	query := (&TransactionEntryClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withEntries = query
 	return _q
 }
 
@@ -374,8 +412,9 @@ func (_q *AccountQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Acco
 		nodes       = []*Account{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withHousehold != nil,
+			_q.withEntries != nil,
 		}
 	)
 	if _q.withHousehold != nil {
@@ -408,6 +447,20 @@ func (_q *AccountQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Acco
 	if query := _q.withHousehold; query != nil {
 		if err := _q.loadHousehold(ctx, query, nodes, nil,
 			func(n *Account, e *Household) { n.Edges.Household = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withEntries; query != nil {
+		if err := _q.loadEntries(ctx, query, nodes,
+			func(n *Account) { n.Edges.Entries = []*TransactionEntry{} },
+			func(n *Account, e *TransactionEntry) { n.Edges.Entries = append(n.Edges.Entries, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedEntries {
+		if err := _q.loadEntries(ctx, query, nodes,
+			func(n *Account) { n.appendNamedEntries(name) },
+			func(n *Account, e *TransactionEntry) { n.appendNamedEntries(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -448,6 +501,37 @@ func (_q *AccountQuery) loadHousehold(ctx context.Context, query *HouseholdQuery
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *AccountQuery) loadEntries(ctx context.Context, query *TransactionEntryQuery, nodes []*Account, init func(*Account), assign func(*Account, *TransactionEntry)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Account)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.TransactionEntry(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(account.EntriesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.account_entries
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "account_entries" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "account_entries" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -534,6 +618,20 @@ func (_q *AccountQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// WithNamedEntries tells the query-builder to eager-load the nodes that are connected to the "entries"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *AccountQuery) WithNamedEntries(name string, opts ...func(*TransactionEntryQuery)) *AccountQuery {
+	query := (&TransactionEntryClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedEntries == nil {
+		_q.withNamedEntries = make(map[string]*TransactionEntryQuery)
+	}
+	_q.withNamedEntries[name] = query
+	return _q
 }
 
 // AccountGroupBy is the group-by builder for Account entities.

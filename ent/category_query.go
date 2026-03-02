@@ -15,22 +15,25 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/transaction"
 )
 
 // CategoryQuery is the builder for querying Category entities.
 type CategoryQuery struct {
 	config
-	ctx               *QueryContext
-	order             []category.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.Category
-	withHousehold     *HouseholdQuery
-	withParent        *CategoryQuery
-	withChildren      *CategoryQuery
-	withFKs           bool
-	modifiers         []func(*sql.Selector)
-	loadTotal         []func(context.Context, []*Category) error
-	withNamedChildren map[string]*CategoryQuery
+	ctx                   *QueryContext
+	order                 []category.OrderOption
+	inters                []Interceptor
+	predicates            []predicate.Category
+	withHousehold         *HouseholdQuery
+	withParent            *CategoryQuery
+	withChildren          *CategoryQuery
+	withTransactions      *TransactionQuery
+	withFKs               bool
+	modifiers             []func(*sql.Selector)
+	loadTotal             []func(context.Context, []*Category) error
+	withNamedChildren     map[string]*CategoryQuery
+	withNamedTransactions map[string]*TransactionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -126,6 +129,28 @@ func (_q *CategoryQuery) QueryChildren() *CategoryQuery {
 			sqlgraph.From(category.Table, category.FieldID, selector),
 			sqlgraph.To(category.Table, category.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, category.ChildrenTable, category.ChildrenColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTransactions chains the current query on the "transactions" edge.
+func (_q *CategoryQuery) QueryTransactions() *TransactionQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(category.Table, category.FieldID, selector),
+			sqlgraph.To(transaction.Table, transaction.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, category.TransactionsTable, category.TransactionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -320,14 +345,15 @@ func (_q *CategoryQuery) Clone() *CategoryQuery {
 		return nil
 	}
 	return &CategoryQuery{
-		config:        _q.config,
-		ctx:           _q.ctx.Clone(),
-		order:         append([]category.OrderOption{}, _q.order...),
-		inters:        append([]Interceptor{}, _q.inters...),
-		predicates:    append([]predicate.Category{}, _q.predicates...),
-		withHousehold: _q.withHousehold.Clone(),
-		withParent:    _q.withParent.Clone(),
-		withChildren:  _q.withChildren.Clone(),
+		config:           _q.config,
+		ctx:              _q.ctx.Clone(),
+		order:            append([]category.OrderOption{}, _q.order...),
+		inters:           append([]Interceptor{}, _q.inters...),
+		predicates:       append([]predicate.Category{}, _q.predicates...),
+		withHousehold:    _q.withHousehold.Clone(),
+		withParent:       _q.withParent.Clone(),
+		withChildren:     _q.withChildren.Clone(),
+		withTransactions: _q.withTransactions.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -364,6 +390,17 @@ func (_q *CategoryQuery) WithChildren(opts ...func(*CategoryQuery)) *CategoryQue
 		opt(query)
 	}
 	_q.withChildren = query
+	return _q
+}
+
+// WithTransactions tells the query-builder to eager-load the nodes that are connected to
+// the "transactions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *CategoryQuery) WithTransactions(opts ...func(*TransactionQuery)) *CategoryQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTransactions = query
 	return _q
 }
 
@@ -446,10 +483,11 @@ func (_q *CategoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cat
 		nodes       = []*Category{}
 		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withHousehold != nil,
 			_q.withParent != nil,
 			_q.withChildren != nil,
+			_q.withTransactions != nil,
 		}
 	)
 	if _q.withHousehold != nil || _q.withParent != nil {
@@ -498,10 +536,24 @@ func (_q *CategoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cat
 			return nil, err
 		}
 	}
+	if query := _q.withTransactions; query != nil {
+		if err := _q.loadTransactions(ctx, query, nodes,
+			func(n *Category) { n.Edges.Transactions = []*Transaction{} },
+			func(n *Category, e *Transaction) { n.Edges.Transactions = append(n.Edges.Transactions, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedChildren {
 		if err := _q.loadChildren(ctx, query, nodes,
 			func(n *Category) { n.appendNamedChildren(name) },
 			func(n *Category, e *Category) { n.appendNamedChildren(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTransactions {
+		if err := _q.loadTransactions(ctx, query, nodes,
+			func(n *Category) { n.appendNamedTransactions(name) },
+			func(n *Category, e *Transaction) { n.appendNamedTransactions(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -608,6 +660,37 @@ func (_q *CategoryQuery) loadChildren(ctx context.Context, query *CategoryQuery,
 	}
 	return nil
 }
+func (_q *CategoryQuery) loadTransactions(ctx context.Context, query *TransactionQuery, nodes []*Category, init func(*Category), assign func(*Category, *Transaction)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Category)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Transaction(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(category.TransactionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.category_transactions
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "category_transactions" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "category_transactions" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 
 func (_q *CategoryQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -704,6 +787,20 @@ func (_q *CategoryQuery) WithNamedChildren(name string, opts ...func(*CategoryQu
 		_q.withNamedChildren = make(map[string]*CategoryQuery)
 	}
 	_q.withNamedChildren[name] = query
+	return _q
+}
+
+// WithNamedTransactions tells the query-builder to eager-load the nodes that are connected to the "transactions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *CategoryQuery) WithNamedTransactions(name string, opts ...func(*TransactionQuery)) *CategoryQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTransactions == nil {
+		_q.withNamedTransactions = make(map[string]*TransactionQuery)
+	}
+	_q.withNamedTransactions[name] = query
 	return _q
 }
 

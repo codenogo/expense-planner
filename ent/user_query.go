@@ -14,20 +14,23 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
 )
 
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx              *QueryContext
-	order            []user.OrderOption
-	inters           []Interceptor
-	predicates       []predicate.User
-	withMembers      *HouseholdMemberQuery
-	modifiers        []func(*sql.Selector)
-	loadTotal        []func(context.Context, []*User) error
-	withNamedMembers map[string]*HouseholdMemberQuery
+	ctx                   *QueryContext
+	order                 []user.OrderOption
+	inters                []Interceptor
+	predicates            []predicate.User
+	withMembers           *HouseholdMemberQuery
+	withTransactions      *TransactionQuery
+	modifiers             []func(*sql.Selector)
+	loadTotal             []func(context.Context, []*User) error
+	withNamedMembers      map[string]*HouseholdMemberQuery
+	withNamedTransactions map[string]*TransactionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -79,6 +82,28 @@ func (_q *UserQuery) QueryMembers() *HouseholdMemberQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(householdmember.Table, householdmember.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.MembersTable, user.MembersColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTransactions chains the current query on the "transactions" edge.
+func (_q *UserQuery) QueryTransactions() *TransactionQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(transaction.Table, transaction.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.TransactionsTable, user.TransactionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -273,12 +298,13 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]user.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.User{}, _q.predicates...),
-		withMembers: _q.withMembers.Clone(),
+		config:           _q.config,
+		ctx:              _q.ctx.Clone(),
+		order:            append([]user.OrderOption{}, _q.order...),
+		inters:           append([]Interceptor{}, _q.inters...),
+		predicates:       append([]predicate.User{}, _q.predicates...),
+		withMembers:      _q.withMembers.Clone(),
+		withTransactions: _q.withTransactions.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -293,6 +319,17 @@ func (_q *UserQuery) WithMembers(opts ...func(*HouseholdMemberQuery)) *UserQuery
 		opt(query)
 	}
 	_q.withMembers = query
+	return _q
+}
+
+// WithTransactions tells the query-builder to eager-load the nodes that are connected to
+// the "transactions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithTransactions(opts ...func(*TransactionQuery)) *UserQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTransactions = query
 	return _q
 }
 
@@ -374,8 +411,9 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			_q.withMembers != nil,
+			_q.withTransactions != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -406,10 +444,24 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			return nil, err
 		}
 	}
+	if query := _q.withTransactions; query != nil {
+		if err := _q.loadTransactions(ctx, query, nodes,
+			func(n *User) { n.Edges.Transactions = []*Transaction{} },
+			func(n *User, e *Transaction) { n.Edges.Transactions = append(n.Edges.Transactions, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedMembers {
 		if err := _q.loadMembers(ctx, query, nodes,
 			func(n *User) { n.appendNamedMembers(name) },
 			func(n *User, e *HouseholdMember) { n.appendNamedMembers(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTransactions {
+		if err := _q.loadTransactions(ctx, query, nodes,
+			func(n *User) { n.appendNamedTransactions(name) },
+			func(n *User, e *Transaction) { n.appendNamedTransactions(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -447,6 +499,37 @@ func (_q *UserQuery) loadMembers(ctx context.Context, query *HouseholdMemberQuer
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_members" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadTransactions(ctx context.Context, query *TransactionQuery, nodes []*User, init func(*User), assign func(*User, *Transaction)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Transaction(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.TransactionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_transactions
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_transactions" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_transactions" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -548,6 +631,20 @@ func (_q *UserQuery) WithNamedMembers(name string, opts ...func(*HouseholdMember
 		_q.withNamedMembers = make(map[string]*HouseholdMemberQuery)
 	}
 	_q.withNamedMembers[name] = query
+	return _q
+}
+
+// WithNamedTransactions tells the query-builder to eager-load the nodes that are connected to the "transactions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedTransactions(name string, opts ...func(*TransactionQuery)) *UserQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTransactions == nil {
+		_q.withNamedTransactions = make(map[string]*TransactionQuery)
+	}
+	_q.withNamedTransactions[name] = query
 	return _q
 }
 

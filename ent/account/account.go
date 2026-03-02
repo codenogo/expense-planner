@@ -27,6 +27,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// EdgeHousehold holds the string denoting the household edge name in mutations.
 	EdgeHousehold = "household"
+	// EdgeEntries holds the string denoting the entries edge name in mutations.
+	EdgeEntries = "entries"
 	// Table holds the table name of the account in the database.
 	Table = "accounts"
 	// HouseholdTable is the table that holds the household relation/edge.
@@ -36,6 +38,13 @@ const (
 	HouseholdInverseTable = "households"
 	// HouseholdColumn is the table column denoting the household relation/edge.
 	HouseholdColumn = "household_accounts"
+	// EntriesTable is the table that holds the entries relation/edge.
+	EntriesTable = "transaction_entries"
+	// EntriesInverseTable is the table name for the TransactionEntry entity.
+	// It exists in this package in order to avoid circular dependency with the "transactionentry" package.
+	EntriesInverseTable = "transaction_entries"
+	// EntriesColumn is the table column denoting the entries relation/edge.
+	EntriesColumn = "account_entries"
 )
 
 // Columns holds all SQL columns for account fields.
@@ -136,11 +145,32 @@ func ByHouseholdField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newHouseholdStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByEntriesCount orders the results by entries count.
+func ByEntriesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEntriesStep(), opts...)
+	}
+}
+
+// ByEntries orders the results by entries terms.
+func ByEntries(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEntriesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newHouseholdStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(HouseholdInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, HouseholdTable, HouseholdColumn),
+	)
+}
+func newEntriesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EntriesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EntriesTable, EntriesColumn),
 	)
 }
 

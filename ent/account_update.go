@@ -13,6 +13,7 @@ import (
 	"github.com/expenser/expense-planner/ent/account"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/transactionentry"
 )
 
 // AccountUpdate is the builder for updating Account entities.
@@ -88,6 +89,21 @@ func (_u *AccountUpdate) SetHousehold(v *Household) *AccountUpdate {
 	return _u.SetHouseholdID(v.ID)
 }
 
+// AddEntryIDs adds the "entries" edge to the TransactionEntry entity by IDs.
+func (_u *AccountUpdate) AddEntryIDs(ids ...int) *AccountUpdate {
+	_u.mutation.AddEntryIDs(ids...)
+	return _u
+}
+
+// AddEntries adds the "entries" edges to the TransactionEntry entity.
+func (_u *AccountUpdate) AddEntries(v ...*TransactionEntry) *AccountUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEntryIDs(ids...)
+}
+
 // Mutation returns the AccountMutation object of the builder.
 func (_u *AccountUpdate) Mutation() *AccountMutation {
 	return _u.mutation
@@ -97,6 +113,27 @@ func (_u *AccountUpdate) Mutation() *AccountMutation {
 func (_u *AccountUpdate) ClearHousehold() *AccountUpdate {
 	_u.mutation.ClearHousehold()
 	return _u
+}
+
+// ClearEntries clears all "entries" edges to the TransactionEntry entity.
+func (_u *AccountUpdate) ClearEntries() *AccountUpdate {
+	_u.mutation.ClearEntries()
+	return _u
+}
+
+// RemoveEntryIDs removes the "entries" edge to TransactionEntry entities by IDs.
+func (_u *AccountUpdate) RemoveEntryIDs(ids ...int) *AccountUpdate {
+	_u.mutation.RemoveEntryIDs(ids...)
+	return _u
+}
+
+// RemoveEntries removes "entries" edges to TransactionEntry entities.
+func (_u *AccountUpdate) RemoveEntries(v ...*TransactionEntry) *AccountUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEntryIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -197,6 +234,51 @@ func (_u *AccountUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.EntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedEntriesIDs(); len(nodes) > 0 && !_u.mutation.EntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EntriesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{account.Label}
@@ -277,6 +359,21 @@ func (_u *AccountUpdateOne) SetHousehold(v *Household) *AccountUpdateOne {
 	return _u.SetHouseholdID(v.ID)
 }
 
+// AddEntryIDs adds the "entries" edge to the TransactionEntry entity by IDs.
+func (_u *AccountUpdateOne) AddEntryIDs(ids ...int) *AccountUpdateOne {
+	_u.mutation.AddEntryIDs(ids...)
+	return _u
+}
+
+// AddEntries adds the "entries" edges to the TransactionEntry entity.
+func (_u *AccountUpdateOne) AddEntries(v ...*TransactionEntry) *AccountUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEntryIDs(ids...)
+}
+
 // Mutation returns the AccountMutation object of the builder.
 func (_u *AccountUpdateOne) Mutation() *AccountMutation {
 	return _u.mutation
@@ -286,6 +383,27 @@ func (_u *AccountUpdateOne) Mutation() *AccountMutation {
 func (_u *AccountUpdateOne) ClearHousehold() *AccountUpdateOne {
 	_u.mutation.ClearHousehold()
 	return _u
+}
+
+// ClearEntries clears all "entries" edges to the TransactionEntry entity.
+func (_u *AccountUpdateOne) ClearEntries() *AccountUpdateOne {
+	_u.mutation.ClearEntries()
+	return _u
+}
+
+// RemoveEntryIDs removes the "entries" edge to TransactionEntry entities by IDs.
+func (_u *AccountUpdateOne) RemoveEntryIDs(ids ...int) *AccountUpdateOne {
+	_u.mutation.RemoveEntryIDs(ids...)
+	return _u
+}
+
+// RemoveEntries removes "entries" edges to TransactionEntry entities.
+func (_u *AccountUpdateOne) RemoveEntries(v ...*TransactionEntry) *AccountUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEntryIDs(ids...)
 }
 
 // Where appends a list predicates to the AccountUpdate builder.
@@ -409,6 +527,51 @@ func (_u *AccountUpdateOne) sqlSave(ctx context.Context) (_node *Account, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(household.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.EntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedEntriesIDs(); len(nodes) > 0 && !_u.mutation.EntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EntriesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   account.EntriesTable,
+			Columns: []string{account.EntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transactionentry.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

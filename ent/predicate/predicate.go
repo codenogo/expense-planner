@@ -21,5 +21,11 @@ type HouseholdMember func(*sql.Selector)
 // Placeholder is the predicate function for placeholder builders.
 type Placeholder func(*sql.Selector)
 
+// Transaction is the predicate function for transaction builders.
+type Transaction func(*sql.Selector)
+
+// TransactionEntry is the predicate function for transactionentry builders.
+type TransactionEntry func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

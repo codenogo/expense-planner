@@ -17,23 +17,26 @@ import (
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/predicate"
+	"github.com/expenser/expense-planner/ent/transaction"
 )
 
 // HouseholdQuery is the builder for querying Household entities.
 type HouseholdQuery struct {
 	config
-	ctx                 *QueryContext
-	order               []household.OrderOption
-	inters              []Interceptor
-	predicates          []predicate.Household
-	withMembers         *HouseholdMemberQuery
-	withAccounts        *AccountQuery
-	withCategories      *CategoryQuery
-	modifiers           []func(*sql.Selector)
-	loadTotal           []func(context.Context, []*Household) error
-	withNamedMembers    map[string]*HouseholdMemberQuery
-	withNamedAccounts   map[string]*AccountQuery
-	withNamedCategories map[string]*CategoryQuery
+	ctx                   *QueryContext
+	order                 []household.OrderOption
+	inters                []Interceptor
+	predicates            []predicate.Household
+	withMembers           *HouseholdMemberQuery
+	withAccounts          *AccountQuery
+	withCategories        *CategoryQuery
+	withTransactions      *TransactionQuery
+	modifiers             []func(*sql.Selector)
+	loadTotal             []func(context.Context, []*Household) error
+	withNamedMembers      map[string]*HouseholdMemberQuery
+	withNamedAccounts     map[string]*AccountQuery
+	withNamedCategories   map[string]*CategoryQuery
+	withNamedTransactions map[string]*TransactionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -129,6 +132,28 @@ func (_q *HouseholdQuery) QueryCategories() *CategoryQuery {
 			sqlgraph.From(household.Table, household.FieldID, selector),
 			sqlgraph.To(category.Table, category.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, household.CategoriesTable, household.CategoriesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTransactions chains the current query on the "transactions" edge.
+func (_q *HouseholdQuery) QueryTransactions() *TransactionQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, selector),
+			sqlgraph.To(transaction.Table, transaction.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.TransactionsTable, household.TransactionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -323,14 +348,15 @@ func (_q *HouseholdQuery) Clone() *HouseholdQuery {
 		return nil
 	}
 	return &HouseholdQuery{
-		config:         _q.config,
-		ctx:            _q.ctx.Clone(),
-		order:          append([]household.OrderOption{}, _q.order...),
-		inters:         append([]Interceptor{}, _q.inters...),
-		predicates:     append([]predicate.Household{}, _q.predicates...),
-		withMembers:    _q.withMembers.Clone(),
-		withAccounts:   _q.withAccounts.Clone(),
-		withCategories: _q.withCategories.Clone(),
+		config:           _q.config,
+		ctx:              _q.ctx.Clone(),
+		order:            append([]household.OrderOption{}, _q.order...),
+		inters:           append([]Interceptor{}, _q.inters...),
+		predicates:       append([]predicate.Household{}, _q.predicates...),
+		withMembers:      _q.withMembers.Clone(),
+		withAccounts:     _q.withAccounts.Clone(),
+		withCategories:   _q.withCategories.Clone(),
+		withTransactions: _q.withTransactions.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -367,6 +393,17 @@ func (_q *HouseholdQuery) WithCategories(opts ...func(*CategoryQuery)) *Househol
 		opt(query)
 	}
 	_q.withCategories = query
+	return _q
+}
+
+// WithTransactions tells the query-builder to eager-load the nodes that are connected to
+// the "transactions" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithTransactions(opts ...func(*TransactionQuery)) *HouseholdQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTransactions = query
 	return _q
 }
 
@@ -448,10 +485,11 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 	var (
 		nodes       = []*Household{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withMembers != nil,
 			_q.withAccounts != nil,
 			_q.withCategories != nil,
+			_q.withTransactions != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -496,6 +534,13 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 			return nil, err
 		}
 	}
+	if query := _q.withTransactions; query != nil {
+		if err := _q.loadTransactions(ctx, query, nodes,
+			func(n *Household) { n.Edges.Transactions = []*Transaction{} },
+			func(n *Household, e *Transaction) { n.Edges.Transactions = append(n.Edges.Transactions, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedMembers {
 		if err := _q.loadMembers(ctx, query, nodes,
 			func(n *Household) { n.appendNamedMembers(name) },
@@ -514,6 +559,13 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 		if err := _q.loadCategories(ctx, query, nodes,
 			func(n *Household) { n.appendNamedCategories(name) },
 			func(n *Household, e *Category) { n.appendNamedCategories(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedTransactions {
+		if err := _q.loadTransactions(ctx, query, nodes,
+			func(n *Household) { n.appendNamedTransactions(name) },
+			func(n *Household, e *Transaction) { n.appendNamedTransactions(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -613,6 +665,37 @@ func (_q *HouseholdQuery) loadCategories(ctx context.Context, query *CategoryQue
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "household_categories" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *HouseholdQuery) loadTransactions(ctx context.Context, query *TransactionQuery, nodes []*Household, init func(*Household), assign func(*Household, *Transaction)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Household)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Transaction(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(household.TransactionsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.household_transactions
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "household_transactions" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "household_transactions" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -742,6 +825,20 @@ func (_q *HouseholdQuery) WithNamedCategories(name string, opts ...func(*Categor
 		_q.withNamedCategories = make(map[string]*CategoryQuery)
 	}
 	_q.withNamedCategories[name] = query
+	return _q
+}
+
+// WithNamedTransactions tells the query-builder to eager-load the nodes that are connected to the "transactions"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithNamedTransactions(name string, opts ...func(*TransactionQuery)) *HouseholdQuery {
+	query := (&TransactionClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedTransactions == nil {
+		_q.withNamedTransactions = make(map[string]*TransactionQuery)
+	}
+	_q.withNamedTransactions[name] = query
 	return _q
 }
 

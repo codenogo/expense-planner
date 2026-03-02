@@ -17,6 +17,8 @@ import (
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
+	"github.com/expenser/expense-planner/ent/transaction"
+	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
 )
 
@@ -78,12 +80,14 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			account.Table:         account.ValidColumn,
-			category.Table:        category.ValidColumn,
-			household.Table:       household.ValidColumn,
-			householdmember.Table: householdmember.ValidColumn,
-			placeholder.Table:     placeholder.ValidColumn,
-			user.Table:            user.ValidColumn,
+			account.Table:          account.ValidColumn,
+			category.Table:         category.ValidColumn,
+			household.Table:        household.ValidColumn,
+			householdmember.Table:  householdmember.ValidColumn,
+			placeholder.Table:      placeholder.ValidColumn,
+			transaction.Table:      transaction.ValidColumn,
+			transactionentry.Table: transactionentry.ValidColumn,
+			user.Table:             user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

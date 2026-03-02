@@ -10,6 +10,7 @@ import (
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/schema"
+	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
 )
 
@@ -67,6 +68,16 @@ func init() {
 	householdmemberDescJoinedAt := householdmemberFields[1].Descriptor()
 	// householdmember.DefaultJoinedAt holds the default value on creation for the joined_at field.
 	householdmember.DefaultJoinedAt = householdmemberDescJoinedAt.Default.(func() time.Time)
+	transactionFields := schema.Transaction{}.Fields()
+	_ = transactionFields
+	// transactionDescDescription is the schema descriptor for description field.
+	transactionDescDescription := transactionFields[0].Descriptor()
+	// transaction.DescriptionValidator is a validator for the "description" field. It is called by the builders before save.
+	transaction.DescriptionValidator = transactionDescDescription.Validators[0].(func(string) error)
+	// transactionDescCreatedAt is the schema descriptor for created_at field.
+	transactionDescCreatedAt := transactionFields[3].Descriptor()
+	// transaction.DefaultCreatedAt holds the default value on creation for the created_at field.
+	transaction.DefaultCreatedAt = transactionDescCreatedAt.Default.(func() time.Time)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescName is the schema descriptor for name field.

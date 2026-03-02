@@ -3,8 +3,30 @@
 package model
 
 import (
+	"time"
+
 	"github.com/expenser/expense-planner/ent"
 )
+
+type AddExpenseInput struct {
+	// Amount in cents (e.g., 50000 = KES 500).
+	Amount      int       `json:"amount"`
+	CategoryID  int       `json:"categoryID"`
+	Description string    `json:"description"`
+	Date        time.Time `json:"date"`
+	// Asset account to debit from. If omitted, uses household's first asset account.
+	AccountID *int `json:"accountID,omitempty"`
+}
+
+type AddIncomeInput struct {
+	// Amount in cents (e.g., 100000 = KES 1000).
+	Amount      int       `json:"amount"`
+	CategoryID  int       `json:"categoryID"`
+	Description string    `json:"description"`
+	Date        time.Time `json:"date"`
+	// Asset account to credit to. If omitted, uses household's first asset account.
+	AccountID *int `json:"accountID,omitempty"`
+}
 
 type AuthPayload struct {
 	AccessToken  string    `json:"accessToken"`

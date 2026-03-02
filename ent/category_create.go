@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
+	"github.com/expenser/expense-planner/ent/transaction"
 )
 
 // CategoryCreate is the builder for creating a Category entity.
@@ -126,6 +127,21 @@ func (_c *CategoryCreate) AddChildren(v ...*Category) *CategoryCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddChildIDs(ids...)
+}
+
+// AddTransactionIDs adds the "transactions" edge to the Transaction entity by IDs.
+func (_c *CategoryCreate) AddTransactionIDs(ids ...int) *CategoryCreate {
+	_c.mutation.AddTransactionIDs(ids...)
+	return _c
+}
+
+// AddTransactions adds the "transactions" edges to the Transaction entity.
+func (_c *CategoryCreate) AddTransactions(v ...*Transaction) *CategoryCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTransactionIDs(ids...)
 }
 
 // Mutation returns the CategoryMutation object of the builder.
@@ -281,6 +297,22 @@ func (_c *CategoryCreate) createSpec() (*Category, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(category.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TransactionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   category.TransactionsTable,
+			Columns: []string{category.TransactionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transaction.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

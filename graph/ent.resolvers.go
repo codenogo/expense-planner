@@ -41,6 +41,16 @@ func (r *queryResolver) HouseholdMembers(ctx context.Context) ([]*ent.HouseholdM
 	return r.Client.HouseholdMember.Query().All(ctx)
 }
 
+// Transactions is the resolver for the transactions field.
+func (r *queryResolver) Transactions(ctx context.Context) ([]*ent.Transaction, error) {
+	return r.Client.Transaction.Query().All(ctx)
+}
+
+// TransactionEntries is the resolver for the transactionEntries field.
+func (r *queryResolver) TransactionEntries(ctx context.Context) ([]*ent.TransactionEntry, error) {
+	return r.Client.TransactionEntry.Query().All(ctx)
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*ent.User, error) {
 	return r.Client.User.Query().All(ctx)

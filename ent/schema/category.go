@@ -44,6 +44,7 @@ func (Category) Edges() []ent.Edge {
 		edge.To("children", Category.Type).
 			From("parent").
 			Unique(),
+		edge.To("transactions", Transaction.Type),
 	}
 }
 

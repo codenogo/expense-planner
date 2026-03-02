@@ -18,6 +18,8 @@ import (
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/placeholder"
+	"github.com/expenser/expense-planner/ent/transaction"
+	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/sync/semaphore"
@@ -52,6 +54,16 @@ var placeholderImplementors = []string{"Placeholder", "Node"}
 
 // IsNode implements the Node interface check for GQLGen.
 func (*Placeholder) IsNode() {}
+
+var transactionImplementors = []string{"Transaction", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*Transaction) IsNode() {}
+
+var transactionentryImplementors = []string{"TransactionEntry", "Node"}
+
+// IsNode implements the Node interface check for GQLGen.
+func (*TransactionEntry) IsNode() {}
 
 var userImplementors = []string{"User", "Node"}
 
@@ -157,6 +169,24 @@ func (c *Client) noder(ctx context.Context, table string, id int) (Noder, error)
 			Where(placeholder.ID(id))
 		if fc := graphql.GetFieldContext(ctx); fc != nil {
 			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, placeholderImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case transaction.Table:
+		query := c.Transaction.Query().
+			Where(transaction.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, transactionImplementors...); err != nil {
+				return nil, err
+			}
+		}
+		return query.Only(ctx)
+	case transactionentry.Table:
+		query := c.TransactionEntry.Query().
+			Where(transactionentry.ID(id))
+		if fc := graphql.GetFieldContext(ctx); fc != nil {
+			if err := query.collectField(ctx, true, graphql.GetOperationContext(ctx), fc.Field, nil, transactionentryImplementors...); err != nil {
 				return nil, err
 			}
 		}
@@ -311,6 +341,38 @@ func (c *Client) noders(ctx context.Context, table string, ids []int) ([]Noder, 
 		query := c.Placeholder.Query().
 			Where(placeholder.IDIn(ids...))
 		query, err := query.CollectFields(ctx, placeholderImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case transaction.Table:
+		query := c.Transaction.Query().
+			Where(transaction.IDIn(ids...))
+		query, err := query.CollectFields(ctx, transactionImplementors...)
+		if err != nil {
+			return nil, err
+		}
+		nodes, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range nodes {
+			for _, noder := range idmap[node.ID] {
+				*noder = node
+			}
+		}
+	case transactionentry.Table:
+		query := c.TransactionEntry.Query().
+			Where(transactionentry.IDIn(ids...))
+		query, err := query.CollectFields(ctx, transactionentryImplementors...)
 		if err != nil {
 			return nil, err
 		}

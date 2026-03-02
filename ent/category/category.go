@@ -30,6 +30,8 @@ const (
 	EdgeParent = "parent"
 	// EdgeChildren holds the string denoting the children edge name in mutations.
 	EdgeChildren = "children"
+	// EdgeTransactions holds the string denoting the transactions edge name in mutations.
+	EdgeTransactions = "transactions"
 	// Table holds the table name of the category in the database.
 	Table = "categories"
 	// HouseholdTable is the table that holds the household relation/edge.
@@ -47,6 +49,13 @@ const (
 	ChildrenTable = "categories"
 	// ChildrenColumn is the table column denoting the children relation/edge.
 	ChildrenColumn = "category_children"
+	// TransactionsTable is the table that holds the transactions relation/edge.
+	TransactionsTable = "transactions"
+	// TransactionsInverseTable is the table name for the Transaction entity.
+	// It exists in this package in order to avoid circular dependency with the "transaction" package.
+	TransactionsInverseTable = "transactions"
+	// TransactionsColumn is the table column denoting the transactions relation/edge.
+	TransactionsColumn = "category_transactions"
 )
 
 // Columns holds all SQL columns for category fields.
@@ -150,6 +159,20 @@ func ByChildren(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newChildrenStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByTransactionsCount orders the results by transactions count.
+func ByTransactionsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTransactionsStep(), opts...)
+	}
+}
+
+// ByTransactions orders the results by transactions terms.
+func ByTransactions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTransactionsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newHouseholdStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -169,5 +192,12 @@ func newChildrenStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(Table, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ChildrenTable, ChildrenColumn),
+	)
+}
+func newTransactionsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TransactionsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TransactionsTable, TransactionsColumn),
 	)
 }

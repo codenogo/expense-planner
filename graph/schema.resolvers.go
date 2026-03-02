@@ -10,6 +10,8 @@ import (
 	"fmt"
 
 	"github.com/expenser/expense-planner/ent"
+	"github.com/expenser/expense-planner/ent/account"
+	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
 	"github.com/expenser/expense-planner/ent/user"
 	"github.com/expenser/expense-planner/graph/model"
@@ -128,6 +130,126 @@ func (r *mutationResolver) CreateHousehold(ctx context.Context, input ent.Create
 	}
 
 	return h, nil
+}
+
+// AddExpense is the resolver for the addExpense field.
+func (r *mutationResolver) AddExpense(ctx context.Context, input model.AddExpenseInput) (*ent.Transaction, error) {
+	uc := middleware.UserFromContext(ctx)
+	if uc == nil {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	// Find the user's household membership.
+	member, err := r.Client.HouseholdMember.Query().
+		Where(
+			householdmember.HasUserWith(user.ID(uc.UserID)),
+		).
+		First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("user has no household membership")
+	}
+	householdID, err := member.QueryHousehold().FirstID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("resolving household: %w", err)
+	}
+
+	// Resolve asset account.
+	var assetAcctID int
+	if input.AccountID != nil {
+		assetAcctID = *input.AccountID
+	} else {
+		assetAcctID, err = r.Client.Account.Query().
+			Where(
+				account.HasHouseholdWith(household.ID(householdID)),
+				account.TypeEQ(account.TypeAsset),
+			).
+			FirstID(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("no asset account found for household")
+		}
+	}
+
+	// Find first expense account for this household.
+	expenseAcctID, err := r.Client.Account.Query().
+		Where(
+			account.HasHouseholdWith(household.ID(householdID)),
+			account.TypeEQ(account.TypeExpense),
+		).
+		FirstID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("no expense account found for household")
+	}
+
+	return r.TxnSvc.AddExpense(ctx, service.AddExpenseInput{
+		HouseholdID:   householdID,
+		UserID:        uc.UserID,
+		AmountCents:   int64(input.Amount),
+		CategoryID:    input.CategoryID,
+		ExpenseAcctID: expenseAcctID,
+		AssetAcctID:   assetAcctID,
+		Description:   input.Description,
+		Date:          input.Date,
+	})
+}
+
+// AddIncome is the resolver for the addIncome field.
+func (r *mutationResolver) AddIncome(ctx context.Context, input model.AddIncomeInput) (*ent.Transaction, error) {
+	uc := middleware.UserFromContext(ctx)
+	if uc == nil {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	// Find the user's household membership.
+	member, err := r.Client.HouseholdMember.Query().
+		Where(
+			householdmember.HasUserWith(user.ID(uc.UserID)),
+		).
+		First(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("user has no household membership")
+	}
+	householdID, err := member.QueryHousehold().FirstID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("resolving household: %w", err)
+	}
+
+	// Resolve asset account.
+	var assetAcctID int
+	if input.AccountID != nil {
+		assetAcctID = *input.AccountID
+	} else {
+		assetAcctID, err = r.Client.Account.Query().
+			Where(
+				account.HasHouseholdWith(household.ID(householdID)),
+				account.TypeEQ(account.TypeAsset),
+			).
+			FirstID(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("no asset account found for household")
+		}
+	}
+
+	// Find first income account for this household.
+	incomeAcctID, err := r.Client.Account.Query().
+		Where(
+			account.HasHouseholdWith(household.ID(householdID)),
+			account.TypeEQ(account.TypeIncome),
+		).
+		FirstID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("no income account found for household")
+	}
+
+	return r.TxnSvc.AddIncome(ctx, service.AddIncomeInput{
+		HouseholdID:  householdID,
+		UserID:       uc.UserID,
+		AmountCents:  int64(input.Amount),
+		CategoryID:   input.CategoryID,
+		IncomeAcctID: incomeAcctID,
+		AssetAcctID:  assetAcctID,
+		Description:  input.Description,
+		Date:         input.Date,
+	})
 }
 
 // Health is the resolver for the health field.

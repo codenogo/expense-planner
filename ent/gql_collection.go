@@ -10,6 +10,8 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/transaction"
+	"github.com/expenser/expense-planner/ent/transactionentry"
 	"github.com/expenser/expense-planner/ent/user"
 )
 
@@ -45,6 +47,19 @@ func (_q *AccountQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				return err
 			}
 			_q.withHousehold = query
+
+		case "entries":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionEntryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, transactionentryImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedEntries(alias, func(wq *TransactionEntryQuery) {
+				*wq = *query
+			})
 		case "name":
 			if _, ok := fieldSeen[account.FieldName]; !ok {
 				selectedFields = append(selectedFields, account.FieldName)
@@ -157,6 +172,19 @@ func (_q *CategoryQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 				return err
 			}
 			_q.WithNamedChildren(alias, func(wq *CategoryQuery) {
+				*wq = *query
+			})
+
+		case "transactions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, transactionImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
 				*wq = *query
 			})
 		case "name":
@@ -280,6 +308,19 @@ func (_q *HouseholdQuery) collectField(ctx context.Context, oneNode bool, opCtx 
 				return err
 			}
 			_q.WithNamedCategories(alias, func(wq *CategoryQuery) {
+				*wq = *query
+			})
+
+		case "transactions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, transactionImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
 				*wq = *query
 			})
 		case "name":
@@ -470,6 +511,217 @@ func newPlaceholderPaginateArgs(rv map[string]any) *placeholderPaginateArgs {
 }
 
 // CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *TransactionQuery) CollectFields(ctx context.Context, satisfies ...string) (*TransactionQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *TransactionQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(transaction.Columns))
+		selectedFields = []string{transaction.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "createdBy":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withCreatedBy = query
+
+		case "entries":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionEntryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, transactionentryImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedEntries(alias, func(wq *TransactionEntryQuery) {
+				*wq = *query
+			})
+
+		case "category":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&CategoryClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, categoryImplementors)...); err != nil {
+				return err
+			}
+			_q.withCategory = query
+		case "description":
+			if _, ok := fieldSeen[transaction.FieldDescription]; !ok {
+				selectedFields = append(selectedFields, transaction.FieldDescription)
+				fieldSeen[transaction.FieldDescription] = struct{}{}
+			}
+		case "date":
+			if _, ok := fieldSeen[transaction.FieldDate]; !ok {
+				selectedFields = append(selectedFields, transaction.FieldDate)
+				fieldSeen[transaction.FieldDate] = struct{}{}
+			}
+		case "status":
+			if _, ok := fieldSeen[transaction.FieldStatus]; !ok {
+				selectedFields = append(selectedFields, transaction.FieldStatus)
+				fieldSeen[transaction.FieldStatus] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[transaction.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, transaction.FieldCreatedAt)
+				fieldSeen[transaction.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type transactionPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []TransactionPaginateOption
+}
+
+func newTransactionPaginateArgs(rv map[string]any) *transactionPaginateArgs {
+	args := &transactionPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *TransactionEntryQuery) CollectFields(ctx context.Context, satisfies ...string) (*TransactionEntryQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *TransactionEntryQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(transactionentry.Columns))
+		selectedFields = []string{transactionentry.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "transaction":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, transactionImplementors)...); err != nil {
+				return err
+			}
+			_q.withTransaction = query
+
+		case "account":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&AccountClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, accountImplementors)...); err != nil {
+				return err
+			}
+			_q.withAccount = query
+		case "amountCents":
+			if _, ok := fieldSeen[transactionentry.FieldAmountCents]; !ok {
+				selectedFields = append(selectedFields, transactionentry.FieldAmountCents)
+				fieldSeen[transactionentry.FieldAmountCents] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type transactionentryPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []TransactionEntryPaginateOption
+}
+
+func newTransactionEntryPaginateArgs(rv map[string]any) *transactionentryPaginateArgs {
+	args := &transactionentryPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
 func (_q *UserQuery) CollectFields(ctx context.Context, satisfies ...string) (*UserQuery, error) {
 	fc := graphql.GetFieldContext(ctx)
 	if fc == nil {
@@ -501,6 +753,19 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				return err
 			}
 			_q.WithNamedMembers(alias, func(wq *HouseholdMemberQuery) {
+				*wq = *query
+			})
+
+		case "transactions":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&TransactionClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, transactionImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
 				*wq = *query
 			})
 		case "name":

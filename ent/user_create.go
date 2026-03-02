@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
 )
 
@@ -80,6 +81,21 @@ func (_c *UserCreate) AddMembers(v ...*HouseholdMember) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddMemberIDs(ids...)
+}
+
+// AddTransactionIDs adds the "transactions" edge to the Transaction entity by IDs.
+func (_c *UserCreate) AddTransactionIDs(ids ...int) *UserCreate {
+	_c.mutation.AddTransactionIDs(ids...)
+	return _c
+}
+
+// AddTransactions adds the "transactions" edges to the Transaction entity.
+func (_c *UserCreate) AddTransactions(v ...*Transaction) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTransactionIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -209,6 +225,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(householdmember.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TransactionsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.TransactionsTable,
+			Columns: []string{user.TransactionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(transaction.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

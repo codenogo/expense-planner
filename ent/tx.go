@@ -22,6 +22,10 @@ type Tx struct {
 	HouseholdMember *HouseholdMemberClient
 	// Placeholder is the client for interacting with the Placeholder builders.
 	Placeholder *PlaceholderClient
+	// Transaction is the client for interacting with the Transaction builders.
+	Transaction *TransactionClient
+	// TransactionEntry is the client for interacting with the TransactionEntry builders.
+	TransactionEntry *TransactionEntryClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -160,6 +164,8 @@ func (tx *Tx) init() {
 	tx.Household = NewHouseholdClient(tx.config)
 	tx.HouseholdMember = NewHouseholdMemberClient(tx.config)
 	tx.Placeholder = NewPlaceholderClient(tx.config)
+	tx.Transaction = NewTransactionClient(tx.config)
+	tx.TransactionEntry = NewTransactionEntryClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

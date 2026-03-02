@@ -17,6 +17,12 @@ type Mutation {
 
   """Create a new household. The authenticated user is automatically added as the owner."""
   createHousehold(input: CreateHouseholdInput!): Household!
+
+  """Record an expense. Creates balanced double-entry journal entries."""
+  addExpense(input: AddExpenseInput!): Transaction!
+
+  """Record income. Creates balanced double-entry journal entries."""
+  addIncome(input: AddIncomeInput!): Transaction!
 }
 
 input RegisterInput {
@@ -34,4 +40,24 @@ type AuthPayload {
   accessToken: String!
   refreshToken: String!
   user: User!
+}
+
+input AddExpenseInput {
+  """Amount in cents (e.g., 50000 = KES 500)."""
+  amount: Int!
+  categoryID: ID!
+  description: String!
+  date: Time!
+  """Asset account to debit from. If omitted, uses household's first asset account."""
+  accountID: ID
+}
+
+input AddIncomeInput {
+  """Amount in cents (e.g., 100000 = KES 1000)."""
+  amount: Int!
+  categoryID: ID!
+  description: String!
+  date: Time!
+  """Asset account to credit to. If omitted, uses household's first asset account."""
+  accountID: ID
 }
