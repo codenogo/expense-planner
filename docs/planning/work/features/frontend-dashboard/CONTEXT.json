@@ -42,6 +42,31 @@
       "area": "bill-validation",
       "decision": "Add client-side validation for zero/negative amounts in bill form",
       "rationale": "Backend enforces Positive() but client-side validation gives immediate UX feedback instead of a server round-trip error."
+    },
+    {
+      "area": "report-resolver-auth",
+      "decision": "Add userHouseholdIDs() membership check to all 3 report resolvers",
+      "rationale": "Review blocker: SpendingByCategory, MonthlyTrend, DashboardSummary only check authentication via UserFromContext, not household membership. Any authenticated user can query any household's data. Fix: apply same pattern as budget.resolvers.go:17-31 (call userHouseholdIDs, loop to verify householdID, return access denied if not member)."
+    },
+    {
+      "area": "import-preview-auth",
+      "decision": "Add userHouseholdIDs() membership check to PreviewCSVImport resolver",
+      "rationale": "Review blocker: PreviewCSVImport checks auth but not household membership. CommitCSVImport (line 78) correctly checks membership. Apply the same userHouseholdIDs() pattern for consistency."
+    },
+    {
+      "area": "preview-category-propagation",
+      "decision": "Propagate edited categories from PreviewStep back to parent wizard state",
+      "rationale": "Review warning: editedCategories state in preview-step.tsx is local and never merged back to previewRows. When user changes categories in preview, the confirm step receives original suggestions. Fix: add onRowsUpdated callback to merge edited categories into previewRows before calling onContinue."
+    },
+    {
+      "area": "transaction-form-validation",
+      "decision": "Add formError state with visible feedback to add-expense and add-income forms",
+      "rationale": "Review warning: handleSubmit silently returns when amount is invalid. Budget forms (bills.tsx, create.tsx) handle this correctly with formError state. Apply same pattern."
+    },
+    {
+      "area": "jwt-structure-validation",
+      "decision": "Validate JWT has 3 parts before atob decoding",
+      "rationale": "Review warning: auth-provider.tsx decodes JWT via atob(token.split('.')[1]) without checking parts.length === 3. Try-catch mitigates crashes but an explicit guard is cleaner."
     }
   ],
   "constraints": [
@@ -55,9 +80,7 @@
     "Must support dark/light theme toggle",
     "CSV import must handle the existing ImportTransactions mutation"
   ],
-  "openQuestions": [
-    "Whether to also expose budget progress in the dashboardSummary query (deferred — separate feature)"
-  ],
+  "openQuestions": [],
   "relatedCode": [
     "cmd/expense-planner/main.go",
     "graph/member.graphqls",
@@ -65,6 +88,9 @@
     "graph/resolver.go",
     "graph/generated.go",
     "graph/ent.resolvers.go",
+    "graph/report.resolvers.go",
+    "graph/import.resolvers.go",
+    "graph/budget.resolvers.go",
     "internal/service/household.go",
     "internal/service/transaction.go",
     "internal/service/report.go",
@@ -74,8 +100,13 @@
     "internal/service/budget_test.go",
     "web/src/pages/budgets/index.tsx",
     "web/src/pages/budgets/bills.tsx",
+    "web/src/pages/transactions/add-expense.tsx",
+    "web/src/pages/transactions/add-income.tsx",
+    "web/src/pages/import/index.tsx",
+    "web/src/components/import/preview-step.tsx",
+    "web/src/providers/auth-provider.tsx",
     "web/src/graphql/budgets.ts",
     "web/src/components/budgets/budget-card.tsx"
   ],
-  "timestamp": "2026-03-02T07:30:00Z"
+  "timestamp": "2026-03-02T10:00:00Z"
 }

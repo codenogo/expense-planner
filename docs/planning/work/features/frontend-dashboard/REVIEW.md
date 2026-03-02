@@ -1,60 +1,82 @@
-# Review: frontend-dashboard
+# Review Report
 
-## Verdict: PASS (12/14)
+**Timestamp:** 2026-03-02T12:00:00Z
+**Branch:** feature/frontend-dashboard
+**Feature:** frontend-dashboard
+**Plans Reviewed:** 10 (backend security fixes), 11 (frontend UX fixes)
 
-**Branch:** `feature/frontend-dashboard` (19 commits, ~95 files changed)
-**Plans reviewed:** 01-08 (scaffold, auth, household, dashboard, transactions, import, reports, budgets)
+## Automated Checks (Package-Aware)
 
-## Automated Checks
+- Lint: **pass**
+- Types: **skipped**
+- Tests: **pass**
+- Invariants: **0 fail / 0 warn**
+- Token savings: **0 tokens** (0.0%, 2 checks)
 
-- Go lint (`go vet ./...`): **pass**
-- Go tests (`go test ./... -short`): **pass** (1.758s)
-- Frontend build (`cd web && npm run build`): **pass** (3.48s, 4011 modules)
+### Per-Package Results
 
-## Scoring Rubric
+#### expense_planner (`.`)
+- lint: **pass** (`go vet ./...`, cwd `.`)
+- typecheck: **skipped**
+- test: **pass** (`go test ./... -short`, cwd `.`)
 
-| Axis | Score | Note |
-|------|-------|------|
-| Correctness | 2 | All components render correctly. Edge cases handled (empty, loading, error, no household) |
-| Security | 2 | No OWASP issues. Server-side auth enforced. No secrets in code |
-| Contract Compliance | 2 | All 8 plans have matching SUMMARY.json. Lifecycle phases correct |
-| Performance | 1 | Client-side month filtering acceptable for data volume. No N+1 |
-| Maintainability | 2 | Clean separation, consistent patterns, good TypeScript types |
-| Test Coverage | 1 | Build passes. No component tests (plan TDD=false for UI pages) |
-| Scope Discipline | 2 | All changes within plan scope. No drive-by edits |
-| **Total** | **12/14** | |
+## Stage 1 — Spec Compliance: PASS
 
-## Blockers (score = 0)
+All 6 file changes align precisely with plans 10 and 11.
 
-None.
+| File | Plan | Change | Status |
+|------|------|--------|--------|
+| `graph/report.resolvers.go` | 10 | IDOR fix: `userHouseholdIDs` + membership loop in all 3 resolvers | pass |
+| `graph/import.resolvers.go` | 10 | IDOR fix: `userHouseholdIDs` + membership loop in PreviewCSVImport | pass |
+| `web/src/components/import/preview-step.tsx` | 11 | Category edits merged into rows via `onPreviewLoaded` before `onContinue` | pass |
+| `web/src/pages/transactions/add-expense.tsx` | 11 | `formError` state with visible error on invalid amount | pass |
+| `web/src/pages/transactions/add-income.tsx` | 11 | Same `formError` pattern as add-expense | pass |
+| `web/src/providers/auth-provider.tsx` | 11 | JWT `parts.length !== 3` guard before atob decode | pass |
 
-## Concerns (score = 1)
+- No scope violations — only planned files modified
+- No drive-by edits or unrelated changes
 
-- **[Performance]** `web/src/pages/budgets/index.tsx:39` — BUDGETS_QUERY fetches all budgets then filters by month client-side. Acceptable for current scale (<300 rows per household), but should add server-side month filtering when data grows.
+## Stage 2 — Code Quality: PASS
 
-- **[Test Coverage]** No component/integration tests for any frontend pages. Consistent with plan decisions (TDD=false for UI-only pages), but a follow-up plan should add at least smoke tests for critical flows.
+### Security Findings (All Resolved)
 
-## Improvements (non-blocking)
+| Finding | Severity | File | Resolution |
+|---------|----------|------|------------|
+| IDOR in report resolvers | resolved | `graph/report.resolvers.go` | `userHouseholdIDs` membership check |
+| IDOR in PreviewCSVImport | resolved | `graph/import.resolvers.go` | `userHouseholdIDs` membership check |
+| JWT structure validation | resolved | `web/src/providers/auth-provider.tsx` | 3-part check before decode |
 
-- `web/src/pages/budgets/bills.tsx:64-67` — Bill form validates NaN but not zero/negative amounts. Backend `Positive()` constraint catches this, but client-side validation would improve UX.
-- `web/src/types/budget.ts:13` — `spentCents` is optional and never populated by the server. BudgetCard gracefully shows "No data". Future work: wire `BudgetProgress` to GraphQL schema.
+### Pattern Compliance
 
-## Pattern Compliance
+| Pattern | Status | Files |
+|---------|--------|-------|
+| `userHouseholdIDs` auth guard | compliant | report.resolvers.go, import.resolvers.go |
+| `formError` state for validation | compliant | add-expense.tsx, add-income.tsx |
+| JWT structure guard | compliant | auth-provider.tsx |
 
-- Apollo Client imports from `@apollo/client/react`
-- `gql` imports from `@apollo/client`
-- shadcn/ui New York style components
-- `useHousehold` for household context
-- `formatCents` for monetary display
-- Sidebar sub-navigation pattern (reports/budgets)
+### Principle Notes
 
-## Security Pass
+- **Surgical Changes**: Only the 6 planned files modified, no drive-by edits
+- **Simplicity First**: Auth fixes reuse existing `userHouseholdIDs` helper, no new abstractions
+- **Verification Before Completion**: `go build`, `go vet`, `go test`, `npm run build` all pass
 
-- All mutations use parameterized GraphQL variables
-- Backend resolvers enforce auth via `userHouseholdIDs()`
-- No secrets or tokens in committed code
-- Auth tokens in localStorage with proper refresh flow
+## Scoring (7 Axes)
 
-## Next Actions
+| Axis | Score | Notes |
+|------|-------|-------|
+| Correctness | 2/2 | All bugs fixed correctly |
+| Security | 2/2 | Both IDOR blockers resolved; JWT guard added |
+| Contract Compliance | 2/2 | All changes match plan specs exactly |
+| Maintainability | 2/2 | Consistent with existing codebase patterns |
+| Performance | 2/2 | No regressions; auth check is one DB query |
+| Test Coverage | 1/2 | Existing tests pass; no new tests for auth guards |
+| Documentation | 2/2 | Summary artifacts properly written |
+| **Total** | **13/14** | |
 
-Ready for `/ship`.
+## Verdict
+
+**PASS**
+
+Score 13/14 with no 0 in Correctness, Security, or Contract Compliance. The only deduction is test coverage (1/2) — no new unit tests were added for the resolver auth guard changes, though existing tests pass. This is acceptable for a fix-only review given that the auth pattern is well-established in the codebase.
+
+**Next action:** `/ship`

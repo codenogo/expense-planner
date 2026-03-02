@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 2,
+  "feature": "frontend-dashboard",
+  "planNumber": "10",
+  "goal": "Fix IDOR vulnerabilities in report resolvers and PreviewCSVImport resolver by adding household membership authorization checks.",
+  "tasks": [
+    {
+      "name": "Add household membership check to report resolvers",
+      "files": ["graph/report.resolvers.go"],
+      "microSteps": [
+        "In SpendingByCategory, replace UserFromContext auth-only check with userHouseholdIDs() call + membership loop",
+        "In MonthlyTrend, apply the same userHouseholdIDs() + membership loop pattern",
+        "In DashboardSummary, apply the same userHouseholdIDs() + membership loop pattern",
+        "Remove unused middleware import if no longer needed (userHouseholdIDs handles auth internally)",
+        "Run go build and go vet to verify compilation",
+        "Run go test to verify existing tests pass"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./...", "go test ./... -short"]
+      },
+      "action": "In graph/report.resolvers.go, replace the auth-only pattern in all 3 resolvers (SpendingByCategory, MonthlyTrend, DashboardSummary). Each currently does: uc := middleware.UserFromContext(ctx); if uc == nil { return nil, fmt.Errorf(\"authentication required\") }. Replace with the pattern from budget.resolvers.go:17-31: _, hhIDs, err := userHouseholdIDs(ctx, r.Client); if err != nil { return nil, err }; allowed := false; for _, id := range hhIDs { if id == householdID { allowed = true; break } }; if !allowed { return nil, fmt.Errorf(\"access denied to household %d\", householdID) }. Remove the middleware import since userHouseholdIDs handles authentication internally. Keep the fmt import.",
+      "verify": ["go build ./...", "go vet ./...", "go test ./... -short"],
+      "blockedBy": []
+    },
+    {
+      "name": "Add household membership check to PreviewCSVImport resolver",
+      "files": ["graph/import.resolvers.go"],
+      "microSteps": [
+        "In PreviewCSVImport, replace UserFromContext auth-only check with userHouseholdIDs() call + membership loop",
+        "Keep all existing column mapping validation logic intact after the auth check",
+        "Run go build and go vet to verify compilation",
+        "Run go test to verify existing tests pass"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go build ./..."],
+        "passingVerify": ["go build ./...", "go test ./... -short"]
+      },
+      "action": "In graph/import.resolvers.go, replace the auth-only check in PreviewCSVImport (lines 23-27) with the userHouseholdIDs pattern: _, hhIDs, err := userHouseholdIDs(ctx, r.Client); if err != nil { return nil, err }; allowed := false; for _, id := range hhIDs { if id == householdID { allowed = true; break } }; if !allowed { return nil, fmt.Errorf(\"access denied to household %d\", householdID) }. Keep all column mapping validation (lines 29-41) and the rest of the function unchanged. The middleware import may still be needed by CommitCSVImport — check before removing.",
+      "verify": ["go build ./...", "go vet ./...", "go test ./... -short"],
+      "blockedBy": []
+    }
+  ],
+  "planVerify": ["go build ./...", "go vet ./...", "go test ./... -short"],
+  "commitMessage": "fix(frontend-dashboard): add household membership authorization to report and import resolvers",
+  "timestamp": "2026-03-02T10:30:00Z"
+}

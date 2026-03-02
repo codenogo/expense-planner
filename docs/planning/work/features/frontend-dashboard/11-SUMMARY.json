@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "feature": "frontend-dashboard",
+  "planNumber": "11",
+  "outcome": "complete",
+  "changes": [
+    {
+      "file": "web/src/components/import/preview-step.tsx",
+      "action": "modified",
+      "description": "Continue button now merges editedCategories into previewRows via onPreviewLoaded before calling onContinue, so user category selections propagate to the confirm step."
+    },
+    {
+      "file": "web/src/pages/transactions/add-expense.tsx",
+      "action": "modified",
+      "description": "Added formError state with visible error message when amount is invalid (NaN or <= 0). Clears on each submit attempt."
+    },
+    {
+      "file": "web/src/pages/transactions/add-income.tsx",
+      "action": "modified",
+      "description": "Added formError state with visible error message when amount is invalid (NaN or <= 0). Same pattern as add-expense."
+    },
+    {
+      "file": "web/src/providers/auth-provider.tsx",
+      "action": "modified",
+      "description": "Added JWT structure validation (parts.length === 3) before atob decoding. Invalid tokens are cleared immediately."
+    }
+  ],
+  "verification": [
+    { "command": "cd web && npm run build", "result": "pass", "output": "built in 4.92s" }
+  ],
+  "commit": "27ad0e5",
+  "timestamp": "2026-03-02T11:30:00Z"
+}

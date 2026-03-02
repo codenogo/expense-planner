@@ -43,6 +43,21 @@ Encourages saving and matches real household behavior.
 ### Bill Form Validation: Client-side amount check
 Backend enforces `Positive()` constraint, but the frontend bill form should validate `amount > 0` and `dueDay` in range client-side for immediate UX feedback.
 
+### Review Fix: Report Resolver Authorization (Blocker)
+All 3 report resolvers (`SpendingByCategory`, `MonthlyTrend`, `DashboardSummary`) only check authentication via `UserFromContext`, NOT household membership. Any authenticated user can query any household's financial data by passing an arbitrary `householdID`. Fix: apply `userHouseholdIDs()` + membership loop pattern from `budget.resolvers.go:17-31`.
+
+### Review Fix: PreviewCSVImport Authorization (Blocker)
+`PreviewCSVImport` resolver checks auth but not household membership. `CommitCSVImport` correctly checks via ent query. Apply same `userHouseholdIDs()` check.
+
+### Review Fix: Preview Category Propagation (Warning)
+`editedCategories` state in `preview-step.tsx` is local-only — user's category selections in preview are lost when moving to confirm. Fix: merge edited categories into `previewRows` before calling `onContinue`.
+
+### Review Fix: Transaction Form Validation Feedback (Warning)
+`add-expense.tsx` and `add-income.tsx` silently return when amount is invalid. Add `formError` state with visible message (same pattern as budget forms).
+
+### Review Fix: JWT Structure Validation (Warning)
+`auth-provider.tsx` decodes JWT via `atob(token.split('.')[1])` without checking `parts.length === 3`. Add explicit guard before decoding.
+
 ## Constraints
 
 - React 18+ / TypeScript strict
@@ -57,9 +72,14 @@ Backend enforces `Positive()` constraint, but the frontend bill form should vali
 
 - `cmd/expense-planner/main.go` — app entry, service wiring
 - `graph/*.graphqls` — GraphQL schema definitions
-- `graph/*resolvers.go` — resolver implementations
-- `internal/service/` — business logic (household, transaction, report, import, JWT, budget)
-- `internal/service/budget.go` — BudgetService with GetBudgetProgress (implemented, tested, not wired to GraphQL)
-- `web/src/pages/budgets/` — budget list, create, bills pages
-- `web/src/graphql/budgets.ts` — budget GraphQL operations
-- `web/src/components/budgets/` — BudgetCard, BillCard components
+- `graph/report.resolvers.go` — report resolvers (IDOR fix target)
+- `graph/import.resolvers.go` — import resolvers (preview auth fix target)
+- `graph/budget.resolvers.go` — budget resolver (correct auth pattern reference)
+- `graph/resolver.go` — `userHouseholdIDs()` helper
+- `graph/ent.resolvers.go` — auto-generated ent resolvers
+- `internal/service/` — business logic
+- `web/src/components/import/preview-step.tsx` — category propagation fix target
+- `web/src/pages/transactions/add-expense.tsx` — form validation fix target
+- `web/src/pages/transactions/add-income.tsx` — form validation fix target
+- `web/src/pages/import/index.tsx` — import wizard parent (holds previewRows state)
+- `web/src/providers/auth-provider.tsx` — JWT decoding fix target
