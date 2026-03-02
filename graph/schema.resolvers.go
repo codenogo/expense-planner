@@ -16,6 +16,7 @@ import (
 	"github.com/expenser/expense-planner/ent/user"
 	"github.com/expenser/expense-planner/graph/model"
 	"github.com/expenser/expense-planner/internal/middleware"
+	"github.com/expenser/expense-planner/internal/seed"
 	"github.com/expenser/expense-planner/internal/service"
 )
 
@@ -127,6 +128,10 @@ func (r *mutationResolver) CreateHousehold(ctx context.Context, input ent.Create
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("adding owner member: %w", err)
+	}
+
+	if err := seed.SeedDefaultCategories(ctx, r.Client, h.ID); err != nil {
+		return nil, fmt.Errorf("seeding default categories: %w", err)
 	}
 
 	return h, nil
