@@ -1,0 +1,35 @@
+"""Spending breakdown for a single category."""
+type CategorySpend {
+  categoryID: ID!
+  name: String!
+  totalCents: Int!
+  percentage: Float!
+}
+
+"""Income, expense, and net totals for a single month."""
+type MonthSummary {
+  month: String!
+  incomeCents: Int!
+  expenseCents: Int!
+  netCents: Int!
+}
+
+"""Household dashboard overview."""
+type DashboardSummary {
+  totalBalanceCents: Int!
+  totalIncomeCents: Int!
+  totalSpendingCents: Int!
+  safeToSpendCents: Int!
+  recentTransactions: [Transaction!]!
+}
+
+extend type Query {
+  """Spending totals grouped by category for a date range."""
+  spendingByCategory(householdID: ID!, startDate: Time!, endDate: Time!): [CategorySpend!]!
+
+  """Income, expense, and net totals per month for the last N months."""
+  monthlyTrend(householdID: ID!, months: Int!): [MonthSummary!]!
+
+  """Dashboard overview: balance, income, spending, safe-to-spend, recent transactions."""
+  dashboardSummary(householdID: ID!): DashboardSummary!
+}

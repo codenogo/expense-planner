@@ -40,6 +40,14 @@ type BankPreset struct {
 	Mapping  *ColumnMappingOutput `json:"mapping"`
 }
 
+// Spending breakdown for a single category.
+type CategorySpend struct {
+	CategoryID int     `json:"categoryID"`
+	Name       string  `json:"name"`
+	TotalCents int     `json:"totalCents"`
+	Percentage float64 `json:"percentage"`
+}
+
 type ColumnMappingInput struct {
 	DateCol        int    `json:"dateCol"`
 	AmountCol      *int   `json:"amountCol,omitempty"`
@@ -58,6 +66,15 @@ type ColumnMappingOutput struct {
 	CreditCol      *int   `json:"creditCol,omitempty"`
 	DateFormat     string `json:"dateFormat"`
 	SkipRows       int    `json:"skipRows"`
+}
+
+// Household dashboard overview.
+type DashboardSummary struct {
+	TotalBalanceCents  int                `json:"totalBalanceCents"`
+	TotalIncomeCents   int                `json:"totalIncomeCents"`
+	TotalSpendingCents int                `json:"totalSpendingCents"`
+	SafeToSpendCents   int                `json:"safeToSpendCents"`
+	RecentTransactions []*ent.Transaction `json:"recentTransactions"`
 }
 
 type ImportPreviewRow struct {
@@ -84,6 +101,14 @@ type ImportSummary struct {
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+// Income, expense, and net totals for a single month.
+type MonthSummary struct {
+	Month        string `json:"month"`
+	IncomeCents  int    `json:"incomeCents"`
+	ExpenseCents int    `json:"expenseCents"`
+	NetCents     int    `json:"netCents"`
 }
 
 type RegisterInput struct {

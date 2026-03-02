@@ -89,6 +89,13 @@ type ComplexityRoot struct {
 		Transactions   func(childComplexity int) int
 	}
 
+	CategorySpend struct {
+		CategoryID func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Percentage func(childComplexity int) int
+		TotalCents func(childComplexity int) int
+	}
+
 	ColumnMappingOutput struct {
 		AmountCol      func(childComplexity int) int
 		CreditCol      func(childComplexity int) int
@@ -97,6 +104,14 @@ type ComplexityRoot struct {
 		DebitCol       func(childComplexity int) int
 		DescriptionCol func(childComplexity int) int
 		SkipRows       func(childComplexity int) int
+	}
+
+	DashboardSummary struct {
+		RecentTransactions func(childComplexity int) int
+		SafeToSpendCents   func(childComplexity int) int
+		TotalBalanceCents  func(childComplexity int) int
+		TotalIncomeCents   func(childComplexity int) int
+		TotalSpendingCents func(childComplexity int) int
 	}
 
 	Household struct {
@@ -135,6 +150,13 @@ type ComplexityRoot struct {
 		TotalImported     func(childComplexity int) int
 	}
 
+	MonthSummary struct {
+		ExpenseCents func(childComplexity int) int
+		IncomeCents  func(childComplexity int) int
+		Month        func(childComplexity int) int
+		NetCents     func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AddExpense       func(childComplexity int, input model.AddExpenseInput) int
 		AddIncome        func(childComplexity int, input model.AddIncomeInput) int
@@ -162,12 +184,15 @@ type ComplexityRoot struct {
 		BankPresets        func(childComplexity int) int
 		Budgets            func(childComplexity int) int
 		Categories         func(childComplexity int) int
+		DashboardSummary   func(childComplexity int, householdID int) int
 		Health             func(childComplexity int) int
 		HouseholdMembers   func(childComplexity int) int
 		Households         func(childComplexity int) int
+		MonthlyTrend       func(childComplexity int, householdID int, months int) int
 		Node               func(childComplexity int, id int) int
 		Nodes              func(childComplexity int, ids []int) int
 		RecurringBills     func(childComplexity int) int
+		SpendingByCategory func(childComplexity int, householdID int, startDate time.Time, endDate time.Time) int
 		Tags               func(childComplexity int) int
 		TransactionEntries func(childComplexity int) int
 		Transactions       func(childComplexity int) int
@@ -249,6 +274,9 @@ type QueryResolver interface {
 	TransactionEntries(ctx context.Context) ([]*ent.TransactionEntry, error)
 	Users(ctx context.Context) ([]*ent.User, error)
 	BankPresets(ctx context.Context) ([]*model.BankPreset, error)
+	SpendingByCategory(ctx context.Context, householdID int, startDate time.Time, endDate time.Time) ([]*model.CategorySpend, error)
+	MonthlyTrend(ctx context.Context, householdID int, months int) ([]*model.MonthSummary, error)
+	DashboardSummary(ctx context.Context, householdID int) (*model.DashboardSummary, error)
 	Health(ctx context.Context) (bool, error)
 }
 
@@ -457,6 +485,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Category.Transactions(childComplexity), true
 
+	case "CategorySpend.categoryID":
+		if e.ComplexityRoot.CategorySpend.CategoryID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategorySpend.CategoryID(childComplexity), true
+	case "CategorySpend.name":
+		if e.ComplexityRoot.CategorySpend.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategorySpend.Name(childComplexity), true
+	case "CategorySpend.percentage":
+		if e.ComplexityRoot.CategorySpend.Percentage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategorySpend.Percentage(childComplexity), true
+	case "CategorySpend.totalCents":
+		if e.ComplexityRoot.CategorySpend.TotalCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategorySpend.TotalCents(childComplexity), true
+
 	case "ColumnMappingOutput.amountCol":
 		if e.ComplexityRoot.ColumnMappingOutput.AmountCol == nil {
 			break
@@ -499,6 +552,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ColumnMappingOutput.SkipRows(childComplexity), true
+
+	case "DashboardSummary.recentTransactions":
+		if e.ComplexityRoot.DashboardSummary.RecentTransactions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DashboardSummary.RecentTransactions(childComplexity), true
+	case "DashboardSummary.safeToSpendCents":
+		if e.ComplexityRoot.DashboardSummary.SafeToSpendCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DashboardSummary.SafeToSpendCents(childComplexity), true
+	case "DashboardSummary.totalBalanceCents":
+		if e.ComplexityRoot.DashboardSummary.TotalBalanceCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DashboardSummary.TotalBalanceCents(childComplexity), true
+	case "DashboardSummary.totalIncomeCents":
+		if e.ComplexityRoot.DashboardSummary.TotalIncomeCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DashboardSummary.TotalIncomeCents(childComplexity), true
+	case "DashboardSummary.totalSpendingCents":
+		if e.ComplexityRoot.DashboardSummary.TotalSpendingCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DashboardSummary.TotalSpendingCents(childComplexity), true
 
 	case "Household.accounts":
 		if e.ComplexityRoot.Household.Accounts == nil {
@@ -648,6 +732,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ImportSummary.TotalImported(childComplexity), true
 
+	case "MonthSummary.expenseCents":
+		if e.ComplexityRoot.MonthSummary.ExpenseCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MonthSummary.ExpenseCents(childComplexity), true
+	case "MonthSummary.incomeCents":
+		if e.ComplexityRoot.MonthSummary.IncomeCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MonthSummary.IncomeCents(childComplexity), true
+	case "MonthSummary.month":
+		if e.ComplexityRoot.MonthSummary.Month == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MonthSummary.Month(childComplexity), true
+	case "MonthSummary.netCents":
+		if e.ComplexityRoot.MonthSummary.NetCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MonthSummary.NetCents(childComplexity), true
+
 	case "Mutation.addExpense":
 		if e.ComplexityRoot.Mutation.AddExpense == nil {
 			break
@@ -793,6 +902,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Categories(childComplexity), true
+	case "Query.dashboardSummary":
+		if e.ComplexityRoot.Query.DashboardSummary == nil {
+			break
+		}
+
+		args, err := ec.field_Query_dashboardSummary_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.DashboardSummary(childComplexity, args["householdID"].(int)), true
 	case "Query.health":
 		if e.ComplexityRoot.Query.Health == nil {
 			break
@@ -812,6 +932,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.Households(childComplexity), true
 
+	case "Query.monthlyTrend":
+		if e.ComplexityRoot.Query.MonthlyTrend == nil {
+			break
+		}
+
+		args, err := ec.field_Query_monthlyTrend_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MonthlyTrend(childComplexity, args["householdID"].(int), args["months"].(int)), true
 	case "Query.node":
 		if e.ComplexityRoot.Query.Node == nil {
 			break
@@ -840,6 +971,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.RecurringBills(childComplexity), true
+	case "Query.spendingByCategory":
+		if e.ComplexityRoot.Query.SpendingByCategory == nil {
+			break
+		}
+
+		args, err := ec.field_Query_spendingByCategory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SpendingByCategory(childComplexity, args["householdID"].(int), args["startDate"].(time.Time), args["endDate"].(time.Time)), true
 	case "Query.tags":
 		if e.ComplexityRoot.Query.Tags == nil {
 			break
@@ -1186,7 +1328,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "import.graphqls" "schema.graphqls"
+//go:embed "import.graphqls" "report.graphqls" "schema.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1199,6 +1341,7 @@ func sourceData(filename string) string {
 
 var sources = []*ast.Source{
 	{Name: "import.graphqls", Input: sourceData("import.graphqls"), BuiltIn: false},
+	{Name: "report.graphqls", Input: sourceData("report.graphqls"), BuiltIn: false},
 	{Name: "schema.graphqls", Input: sourceData("schema.graphqls"), BuiltIn: false},
 	{Name: "../ent.graphql", Input: `directive @goField(forceResolver: Boolean, name: String, omittable: Boolean) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
 directive @goModel(model: String, models: [String!], forceGenerate: Boolean) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
@@ -1836,6 +1979,33 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_dashboardSummary_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_monthlyTrend_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "months", ec.unmarshalNInt2int)
+	if err != nil {
+		return nil, err
+	}
+	args["months"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1855,6 +2025,27 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 		return nil, err
 	}
 	args["ids"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_spendingByCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "startDate", ec.unmarshalNTime2timeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["startDate"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "endDate", ec.unmarshalNTime2timeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["endDate"] = arg2
 	return args, nil
 }
 
@@ -3057,6 +3248,122 @@ func (ec *executionContext) fieldContext_Category_recurringBills(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _CategorySpend_categoryID(ctx context.Context, field graphql.CollectedField, obj *model.CategorySpend) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CategorySpend_categoryID,
+		func(ctx context.Context) (any, error) {
+			return obj.CategoryID, nil
+		},
+		nil,
+		ec.marshalNID2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CategorySpend_categoryID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CategorySpend",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CategorySpend_name(ctx context.Context, field graphql.CollectedField, obj *model.CategorySpend) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CategorySpend_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CategorySpend_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CategorySpend",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CategorySpend_totalCents(ctx context.Context, field graphql.CollectedField, obj *model.CategorySpend) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CategorySpend_totalCents,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CategorySpend_totalCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CategorySpend",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CategorySpend_percentage(ctx context.Context, field graphql.CollectedField, obj *model.CategorySpend) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CategorySpend_percentage,
+		func(ctx context.Context) (any, error) {
+			return obj.Percentage, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CategorySpend_percentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CategorySpend",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ColumnMappingOutput_dateCol(ctx context.Context, field graphql.CollectedField, obj *model.ColumnMappingOutput) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -3255,6 +3562,173 @@ func (ec *executionContext) fieldContext_ColumnMappingOutput_skipRows(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardSummary_totalBalanceCents(ctx context.Context, field graphql.CollectedField, obj *model.DashboardSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardSummary_totalBalanceCents,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalBalanceCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardSummary_totalBalanceCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardSummary_totalIncomeCents(ctx context.Context, field graphql.CollectedField, obj *model.DashboardSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardSummary_totalIncomeCents,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalIncomeCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardSummary_totalIncomeCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardSummary_totalSpendingCents(ctx context.Context, field graphql.CollectedField, obj *model.DashboardSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardSummary_totalSpendingCents,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalSpendingCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardSummary_totalSpendingCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardSummary_safeToSpendCents(ctx context.Context, field graphql.CollectedField, obj *model.DashboardSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardSummary_safeToSpendCents,
+		func(ctx context.Context) (any, error) {
+			return obj.SafeToSpendCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardSummary_safeToSpendCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardSummary_recentTransactions(ctx context.Context, field graphql.CollectedField, obj *model.DashboardSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardSummary_recentTransactions,
+		func(ctx context.Context) (any, error) {
+			return obj.RecentTransactions, nil
+		},
+		nil,
+		ec.marshalNTransaction2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐTransactionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardSummary_recentTransactions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Transaction_id(ctx, field)
+			case "description":
+				return ec.fieldContext_Transaction_description(ctx, field)
+			case "date":
+				return ec.fieldContext_Transaction_date(ctx, field)
+			case "status":
+				return ec.fieldContext_Transaction_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Transaction_createdAt(ctx, field)
+			case "household":
+				return ec.fieldContext_Transaction_household(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_Transaction_createdBy(ctx, field)
+			case "entries":
+				return ec.fieldContext_Transaction_entries(ctx, field)
+			case "category":
+				return ec.fieldContext_Transaction_category(ctx, field)
+			case "tags":
+				return ec.fieldContext_Transaction_tags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
 		},
 	}
 	return fc, nil
@@ -4108,6 +4582,122 @@ func (ec *executionContext) _ImportSummary_totalAmountCents(ctx context.Context,
 func (ec *executionContext) fieldContext_ImportSummary_totalAmountCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ImportSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MonthSummary_month(ctx context.Context, field graphql.CollectedField, obj *model.MonthSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MonthSummary_month,
+		func(ctx context.Context) (any, error) {
+			return obj.Month, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MonthSummary_month(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MonthSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MonthSummary_incomeCents(ctx context.Context, field graphql.CollectedField, obj *model.MonthSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MonthSummary_incomeCents,
+		func(ctx context.Context) (any, error) {
+			return obj.IncomeCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MonthSummary_incomeCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MonthSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MonthSummary_expenseCents(ctx context.Context, field graphql.CollectedField, obj *model.MonthSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MonthSummary_expenseCents,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpenseCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MonthSummary_expenseCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MonthSummary",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MonthSummary_netCents(ctx context.Context, field graphql.CollectedField, obj *model.MonthSummary) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MonthSummary_netCents,
+		func(ctx context.Context) (any, error) {
+			return obj.NetCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MonthSummary_netCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MonthSummary",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -5280,6 +5870,161 @@ func (ec *executionContext) fieldContext_Query_bankPresets(_ context.Context, fi
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BankPreset", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_spendingByCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_spendingByCategory,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SpendingByCategory(ctx, fc.Args["householdID"].(int), fc.Args["startDate"].(time.Time), fc.Args["endDate"].(time.Time))
+		},
+		nil,
+		ec.marshalNCategorySpend2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐCategorySpendᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_spendingByCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "categoryID":
+				return ec.fieldContext_CategorySpend_categoryID(ctx, field)
+			case "name":
+				return ec.fieldContext_CategorySpend_name(ctx, field)
+			case "totalCents":
+				return ec.fieldContext_CategorySpend_totalCents(ctx, field)
+			case "percentage":
+				return ec.fieldContext_CategorySpend_percentage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CategorySpend", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_spendingByCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_monthlyTrend(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_monthlyTrend,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MonthlyTrend(ctx, fc.Args["householdID"].(int), fc.Args["months"].(int))
+		},
+		nil,
+		ec.marshalNMonthSummary2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐMonthSummaryᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_monthlyTrend(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "month":
+				return ec.fieldContext_MonthSummary_month(ctx, field)
+			case "incomeCents":
+				return ec.fieldContext_MonthSummary_incomeCents(ctx, field)
+			case "expenseCents":
+				return ec.fieldContext_MonthSummary_expenseCents(ctx, field)
+			case "netCents":
+				return ec.fieldContext_MonthSummary_netCents(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MonthSummary", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_monthlyTrend_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_dashboardSummary(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_dashboardSummary,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().DashboardSummary(ctx, fc.Args["householdID"].(int))
+		},
+		nil,
+		ec.marshalNDashboardSummary2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐDashboardSummary,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_dashboardSummary(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "totalBalanceCents":
+				return ec.fieldContext_DashboardSummary_totalBalanceCents(ctx, field)
+			case "totalIncomeCents":
+				return ec.fieldContext_DashboardSummary_totalIncomeCents(ctx, field)
+			case "totalSpendingCents":
+				return ec.fieldContext_DashboardSummary_totalSpendingCents(ctx, field)
+			case "safeToSpendCents":
+				return ec.fieldContext_DashboardSummary_safeToSpendCents(ctx, field)
+			case "recentTransactions":
+				return ec.fieldContext_DashboardSummary_recentTransactions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DashboardSummary", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_dashboardSummary_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -10576,6 +11321,60 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var categorySpendImplementors = []string{"CategorySpend"}
+
+func (ec *executionContext) _CategorySpend(ctx context.Context, sel ast.SelectionSet, obj *model.CategorySpend) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, categorySpendImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CategorySpend")
+		case "categoryID":
+			out.Values[i] = ec._CategorySpend_categoryID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._CategorySpend_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCents":
+			out.Values[i] = ec._CategorySpend_totalCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentage":
+			out.Values[i] = ec._CategorySpend_percentage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var columnMappingOutputImplementors = []string{"ColumnMappingOutput"}
 
 func (ec *executionContext) _ColumnMappingOutput(ctx context.Context, sel ast.SelectionSet, obj *model.ColumnMappingOutput) graphql.Marshaler {
@@ -10610,6 +11409,65 @@ func (ec *executionContext) _ColumnMappingOutput(ctx context.Context, sel ast.Se
 			}
 		case "skipRows":
 			out.Values[i] = ec._ColumnMappingOutput_skipRows(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var dashboardSummaryImplementors = []string{"DashboardSummary"}
+
+func (ec *executionContext) _DashboardSummary(ctx context.Context, sel ast.SelectionSet, obj *model.DashboardSummary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dashboardSummaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DashboardSummary")
+		case "totalBalanceCents":
+			out.Values[i] = ec._DashboardSummary_totalBalanceCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalIncomeCents":
+			out.Values[i] = ec._DashboardSummary_totalIncomeCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalSpendingCents":
+			out.Values[i] = ec._DashboardSummary_totalSpendingCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "safeToSpendCents":
+			out.Values[i] = ec._DashboardSummary_safeToSpendCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recentTransactions":
+			out.Values[i] = ec._DashboardSummary_recentTransactions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -11147,6 +12005,60 @@ func (ec *executionContext) _ImportSummary(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var monthSummaryImplementors = []string{"MonthSummary"}
+
+func (ec *executionContext) _MonthSummary(ctx context.Context, sel ast.SelectionSet, obj *model.MonthSummary) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, monthSummaryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MonthSummary")
+		case "month":
+			out.Values[i] = ec._MonthSummary_month(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "incomeCents":
+			out.Values[i] = ec._MonthSummary_incomeCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expenseCents":
+			out.Values[i] = ec._MonthSummary_expenseCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "netCents":
+			out.Values[i] = ec._MonthSummary_netCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -11622,6 +12534,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_bankPresets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "spendingByCategory":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_spendingByCategory(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "monthlyTrend":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_monthlyTrend(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "dashboardSummary":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_dashboardSummary(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -12900,6 +13878,32 @@ func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋexpenserᚋexpens
 	return ec._Category(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNCategorySpend2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐCategorySpendᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.CategorySpend) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCategorySpend2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐCategorySpend(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCategorySpend2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐCategorySpend(ctx context.Context, sel ast.SelectionSet, v *model.CategorySpend) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CategorySpend(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNColumnMappingInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐColumnMappingInput(ctx context.Context, v any) (model.ColumnMappingInput, error) {
 	res, err := ec.unmarshalInputColumnMappingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -12918,6 +13922,36 @@ func (ec *executionContext) marshalNColumnMappingOutput2ᚖgithubᚗcomᚋexpens
 func (ec *executionContext) unmarshalNCreateHouseholdInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐCreateHouseholdInput(ctx context.Context, v any) (ent.CreateHouseholdInput, error) {
 	res, err := ec.unmarshalInputCreateHouseholdInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDashboardSummary2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐDashboardSummary(ctx context.Context, sel ast.SelectionSet, v model.DashboardSummary) graphql.Marshaler {
+	return ec._DashboardSummary(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDashboardSummary2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐDashboardSummary(ctx context.Context, sel ast.SelectionSet, v *model.DashboardSummary) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DashboardSummary(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalFloatContext(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return graphql.WrapContextMarshaler(ctx, res)
 }
 
 func (ec *executionContext) marshalNHousehold2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐHousehold(ctx context.Context, sel ast.SelectionSet, v ent.Household) graphql.Marshaler {
@@ -13127,6 +14161,32 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 func (ec *executionContext) unmarshalNLoginInput2githubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐLoginInput(ctx context.Context, v any) (model.LoginInput, error) {
 	res, err := ec.unmarshalInputLoginInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMonthSummary2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐMonthSummaryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.MonthSummary) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMonthSummary2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐMonthSummary(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMonthSummary2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐMonthSummary(ctx context.Context, sel ast.SelectionSet, v *model.MonthSummary) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MonthSummary(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNNode2ᚕgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐNoder(ctx context.Context, sel ast.SelectionSet, v []ent.Noder) graphql.Marshaler {

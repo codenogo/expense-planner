@@ -175,7 +175,3 @@ func (r *queryResolver) BankPresets(ctx context.Context) ([]*model.BankPreset, e
 		},
 	}, nil
 }
-
-func intPtr(i int) *int {
-	return &i
-}

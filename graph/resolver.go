@@ -11,4 +11,9 @@ type Resolver struct {
 	JWT       *service.JWTService
 	TxnSvc   *service.TransactionService
 	ImportSvc *service.ImportService
+	ReportSvc *service.ReportService
+}
+
+func intPtr(i int) *int {
+	return &i
 }

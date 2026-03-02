@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "feature": "household-ledger",
+  "planNumber": "06",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create CSV parser with configurable column mapping",
+      "files": [
+        "internal/service/csv_import.go",
+        "internal/service/csv_import_test.go"
+      ],
+      "description": "Created ColumnMapping struct with DateCol, AmountCol, DescriptionCol, DebitCol, CreditCol, DateFormat, SkipRows. ParseCSV reads CSV via io.Reader and returns []ImportRow with date, amount_cents, description. Supports both single-amount (KCB) and split debit/credit (Equity, M-PESA) column formats. 6 table-driven tests covering KCB, Equity, M-PESA formats plus edge cases."
+    },
+    {
+      "task": "Create import preview and commit flow",
+      "files": [
+        "internal/service/csv_import.go",
+        "internal/service/csv_import_test.go"
+      ],
+      "description": "ImportService with PreviewImport (auto-categorizes by keyword matching category names in descriptions) and CommitImport (creates transactions via TransactionService, skips duplicates by date+amount+description match). Returns ImportSummary with TotalImported, SkippedDuplicates, TotalAmountCents. 3 tests: preview with category matching, commit flow, duplicate skipping."
+    },
+    {
+      "task": "Create CSV import GraphQL mutations",
+      "files": [
+        "graph/import.graphqls",
+        "graph/import.resolvers.go",
+        "graph/resolver.go",
+        "graph/generated.go",
+        "graph/model/models_gen.go",
+        "cmd/expense-planner/main.go"
+      ],
+      "description": "Added GraphQL types: ColumnMappingInput/Output, ImportPreviewRow, ImportSummary, ImportRowInput, BankPreset. Mutations: previewCSVImport (parse+categorize), commitCSVImport (create transactions). Query: bankPresets returns preset mappings for KCB, Equity, M-PESA. ImportService wired into Resolver and main.go."
+    }
+  ],
+  "verification": [
+    {"command": "go build ./...", "result": "pass"},
+    {"command": "go vet ./...", "result": "pass"},
+    {"command": "go test -count=1 ./...", "result": "pass (19 tests)"}
+  ],
+  "commit": "6e10264",
+  "timestamp": "2026-03-02T00:00:00Z"
+}
