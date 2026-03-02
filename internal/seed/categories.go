@@ -95,6 +95,22 @@ var kenyanPresets = []categoryDef{
 			{Name: "Other", Icon: "vault"},
 		},
 	},
+	// Income categories
+	{
+		Name: "Income",
+		Icon: "wallet",
+		Children: []categoryDef{
+			{Name: "Salary", Icon: "banknote"},
+			{Name: "Freelance", Icon: "laptop"},
+			{Name: "Business", Icon: "briefcase"},
+			{Name: "Side Hustle", Icon: "rocket"},
+			{Name: "Investments", Icon: "trending-up"},
+			{Name: "Rental Income", Icon: "house"},
+			{Name: "Gifts", Icon: "gift"},
+			{Name: "Refunds", Icon: "rotate-ccw"},
+			{Name: "Other Income", Icon: "plus-circle"},
+		},
+	},
 }
 
 // SeedDefaultCategories creates the default Kenyan household category tree
