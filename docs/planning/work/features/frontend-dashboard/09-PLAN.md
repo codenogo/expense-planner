@@ -6,7 +6,7 @@ Wire BudgetService to GraphQL, feed real spent data into BudgetCard, and add cli
 ## Tasks
 
 ### Task 1: Wire BudgetService to GraphQL
-**Files:** `graph/budget.graphqls`, `graph/resolver.go`, `graph/report.resolvers.go`, `cmd/expense-planner/main.go`, `graph/generated.go`
+**Files:** `graph/budget.graphqls`, `graph/budget.resolvers.go`, `graph/resolver.go`, `graph/report.resolvers.go`, `cmd/expense-planner/main.go`, `graph/generated.go`, `graph/model/models_gen.go`
 **Action:**
 Create a new graph/budget.graphqls file with a BudgetProgressEntry type (budgetID: ID!, categoryID: ID!, month: String!, amountCents: Int!, spentCents: Int!, rollover: Boolean!) and extend Query with budgetProgress(householdID: ID!, month: String!): [BudgetProgressEntry!]!. Add BudgetSvc *service.BudgetService to graph.Resolver. Run go generate ./graph. Implement the budgetProgress resolver by calling r.BudgetSvc.GetBudgetProgress and mapping service.BudgetProgress to the GraphQL type. In main.go, create budgetSvc := service.NewBudgetService(client) and add BudgetSvc: budgetSvc to the Resolver literal.
 

@@ -8,10 +8,12 @@
       "name": "Wire BudgetService to GraphQL",
       "files": [
         "graph/budget.graphqls",
+        "graph/budget.resolvers.go",
         "graph/resolver.go",
         "graph/report.resolvers.go",
         "cmd/expense-planner/main.go",
-        "graph/generated.go"
+        "graph/generated.go",
+        "graph/model/models_gen.go"
       ],
       "microSteps": [
         "Create graph/budget.graphqls with BudgetProgressEntry type and budgetProgress query",
