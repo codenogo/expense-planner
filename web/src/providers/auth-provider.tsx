@@ -3,7 +3,8 @@ import { useMutation } from '@apollo/client/react'
 import { useNavigate } from 'react-router-dom'
 import { LOGIN_MUTATION, REGISTER_MUTATION } from '@/graphql/auth'
 import type { User, AuthPayload, LoginInput, RegisterInput } from '@/types/auth'
-import { getAccessToken, setTokens, clearTokens } from '@/lib/auth'
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from '@/lib/auth'
+import { REFRESH_TOKEN_MUTATION } from '@/graphql/auth'
 
 interface AuthContextType {
   user: User | null
@@ -23,25 +24,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [loginMutation] = useMutation<{ login: AuthPayload }, { input: LoginInput }>(LOGIN_MUTATION)
   const [registerMutation] = useMutation<{ register: AuthPayload }, { input: RegisterInput }>(REGISTER_MUTATION)
+  const [refreshMutation] = useMutation<{ refreshToken: AuthPayload }, { token: string }>(REFRESH_TOKEN_MUTATION)
 
   // Check for existing token on mount
   useEffect(() => {
-    const token = getAccessToken()
-    if (token) {
+    async function initAuth() {
+      const token = getAccessToken()
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
       const parts = token.split('.')
       if (parts.length !== 3) {
         clearTokens()
-      } else {
-        try {
-          const payload = JSON.parse(atob(parts[1]))
-          setUser({ id: payload.sub, name: payload.name || '', email: payload.email || '', createdAt: '', updatedAt: '' })
-        } catch {
-          clearTokens()
-        }
+        setLoading(false)
+        return
       }
+
+      try {
+        const payload = JSON.parse(atob(parts[1]))
+
+        // Check if access token is expired
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          // Try to refresh
+          const refreshToken = getRefreshToken()
+          if (!refreshToken) {
+            clearTokens()
+            setLoading(false)
+            return
+          }
+
+          try {
+            const { data } = await refreshMutation({ variables: { token: refreshToken } })
+            if (data?.refreshToken) {
+              setTokens(data.refreshToken.accessToken, data.refreshToken.refreshToken)
+              setUser(data.refreshToken.user)
+            } else {
+              clearTokens()
+            }
+          } catch {
+            clearTokens()
+          }
+          setLoading(false)
+          return
+        }
+
+        setUser({ id: payload.sub, name: payload.name || '', email: payload.email || '', createdAt: '', updatedAt: '' })
+      } catch {
+        clearTokens()
+      }
+      setLoading(false)
     }
-    setLoading(false)
-  }, [])
+
+    initAuth()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (input: LoginInput) => {
     const { data } = await loginMutation({ variables: { input } })

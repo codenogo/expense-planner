@@ -33,7 +33,8 @@ const errorLink = onError(({ error, operation, forward }) => {
     (err) =>
       (err.extensions?.['code'] === 'UNAUTHENTICATED') ||
       err.message.toLowerCase().includes('unauthorized') ||
-      err.message.toLowerCase().includes('unauthenticated')
+      err.message.toLowerCase().includes('unauthenticated') ||
+      err.message.toLowerCase().includes('authentication required')
   )
 
   if (!unauthError) return
