@@ -3,6 +3,7 @@ import { AppShell } from '@/components/layout/app-shell'
 import { ProtectedRoute } from '@/components/protected-route'
 import { LoginPage } from '@/pages/login'
 import { RegisterPage } from '@/pages/register'
+import { DashboardPage } from '@/pages/dashboard'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -23,7 +24,7 @@ export default function App() {
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
-          <Route index element={<PlaceholderPage title="Dashboard" />} />
+          <Route index element={<DashboardPage />} />
           <Route path="transactions" element={<PlaceholderPage title="Transactions" />} />
           <Route path="import" element={<PlaceholderPage title="Import" />} />
           <Route path="reports" element={<PlaceholderPage title="Reports" />} />
