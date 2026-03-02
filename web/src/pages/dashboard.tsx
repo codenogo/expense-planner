@@ -4,6 +4,7 @@ import type { DashboardSummary } from '@/types/reports'
 import { useHousehold } from '@/providers/household-provider'
 import { SummaryCards } from '@/components/dashboard/summary-cards'
 import { SpendingChart } from '@/components/dashboard/spending-chart'
+import { RecentTransactions } from '@/components/dashboard/recent-transactions'
 
 export function DashboardPage() {
   const { currentHouseholdId, currentHousehold } = useHousehold()
@@ -62,6 +63,13 @@ export function DashboardPage() {
       )}
 
       <SpendingChart />
+
+      {summary && (
+        <RecentTransactions
+          transactions={summary.recentTransactions}
+          currency={currentHousehold?.baseCurrency}
+        />
+      )}
     </div>
   )
 }
