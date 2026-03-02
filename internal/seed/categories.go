@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/expenser/expense-planner/ent"
+	"github.com/expenser/expense-planner/ent/household"
 )
 
 type categoryDef struct {
@@ -111,6 +112,25 @@ var kenyanPresets = []categoryDef{
 			{Name: "Other Income", Icon: "plus-circle"},
 		},
 	},
+}
+
+// BackfillCategories seeds default categories for any existing households
+// that have none. Safe to call on every startup — it's a no-op for households
+// that already have categories.
+func BackfillCategories(ctx context.Context, client *ent.Client) error {
+	// Find households with zero categories.
+	hhs, err := client.Household.Query().
+		Where(household.Not(household.HasCategories())).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("querying households without categories: %w", err)
+	}
+	for _, h := range hhs {
+		if err := SeedDefaultCategories(ctx, client, h.ID); err != nil {
+			return fmt.Errorf("backfilling household %d: %w", h.ID, err)
+		}
+	}
+	return nil
 }
 
 // SeedDefaultCategories creates the default Kenyan household category tree

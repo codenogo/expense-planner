@@ -16,6 +16,7 @@ import (
 	"github.com/expenser/expense-planner/graph"
 	"github.com/expenser/expense-planner/internal/config"
 	"github.com/expenser/expense-planner/internal/middleware"
+	"github.com/expenser/expense-planner/internal/seed"
 	"github.com/expenser/expense-planner/internal/service"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -37,6 +38,11 @@ func main() {
 	ctx := context.Background()
 	if err := client.Schema.Create(ctx); err != nil {
 		log.Fatalf("running schema migration: %v", err)
+	}
+
+	// Backfill default categories for existing households that have none.
+	if err := seed.BackfillCategories(ctx, client); err != nil {
+		log.Fatalf("backfilling categories: %v", err)
 	}
 
 	// Create JWT service.
