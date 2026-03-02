@@ -28,6 +28,8 @@ const (
 	EdgeMembers = "members"
 	// EdgeTransactions holds the string denoting the transactions edge name in mutations.
 	EdgeTransactions = "transactions"
+	// EdgeInviteCodes holds the string denoting the invite_codes edge name in mutations.
+	EdgeInviteCodes = "invite_codes"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// MembersTable is the table that holds the members relation/edge.
@@ -44,6 +46,13 @@ const (
 	TransactionsInverseTable = "transactions"
 	// TransactionsColumn is the table column denoting the transactions relation/edge.
 	TransactionsColumn = "user_transactions"
+	// InviteCodesTable is the table that holds the invite_codes relation/edge.
+	InviteCodesTable = "invite_codes"
+	// InviteCodesInverseTable is the table name for the InviteCode entity.
+	// It exists in this package in order to avoid circular dependency with the "invitecode" package.
+	InviteCodesInverseTable = "invite_codes"
+	// InviteCodesColumn is the table column denoting the invite_codes relation/edge.
+	InviteCodesColumn = "user_invite_codes"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -139,6 +148,20 @@ func ByTransactions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTransactionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByInviteCodesCount orders the results by invite_codes count.
+func ByInviteCodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInviteCodesStep(), opts...)
+	}
+}
+
+// ByInviteCodes orders the results by invite_codes terms.
+func ByInviteCodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInviteCodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newMembersStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -151,5 +174,12 @@ func newTransactionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TransactionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TransactionsTable, TransactionsColumn),
+	)
+}
+func newInviteCodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InviteCodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, InviteCodesTable, InviteCodesColumn),
 	)
 }

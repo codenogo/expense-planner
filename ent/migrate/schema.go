@@ -146,6 +146,36 @@ var (
 			},
 		},
 	}
+	// InviteCodesColumns holds the columns for the "invite_codes" table.
+	InviteCodesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "code", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "used", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "household_invite_codes", Type: field.TypeInt},
+		{Name: "user_invite_codes", Type: field.TypeInt},
+	}
+	// InviteCodesTable holds the schema information for the "invite_codes" table.
+	InviteCodesTable = &schema.Table{
+		Name:       "invite_codes",
+		Columns:    InviteCodesColumns,
+		PrimaryKey: []*schema.Column{InviteCodesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "invite_codes_households_invite_codes",
+				Columns:    []*schema.Column{InviteCodesColumns[5]},
+				RefColumns: []*schema.Column{HouseholdsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "invite_codes_users_invite_codes",
+				Columns:    []*schema.Column{InviteCodesColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// PlaceholdersColumns holds the columns for the "placeholders" table.
 	PlaceholdersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -327,6 +357,7 @@ var (
 		CategoriesTable,
 		HouseholdsTable,
 		HouseholdMembersTable,
+		InviteCodesTable,
 		PlaceholdersTable,
 		RecurringBillsTable,
 		TagsTable,
@@ -345,6 +376,8 @@ func init() {
 	CategoriesTable.ForeignKeys[1].RefTable = HouseholdsTable
 	HouseholdMembersTable.ForeignKeys[0].RefTable = HouseholdsTable
 	HouseholdMembersTable.ForeignKeys[1].RefTable = UsersTable
+	InviteCodesTable.ForeignKeys[0].RefTable = HouseholdsTable
+	InviteCodesTable.ForeignKeys[1].RefTable = UsersTable
 	RecurringBillsTable.ForeignKeys[0].RefTable = CategoriesTable
 	RecurringBillsTable.ForeignKeys[1].RefTable = HouseholdsTable
 	TagsTable.ForeignKeys[0].RefTable = HouseholdsTable

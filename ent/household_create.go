@@ -15,6 +15,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
@@ -164,6 +165,21 @@ func (_c *HouseholdCreate) AddRecurringBills(v ...*RecurringBill) *HouseholdCrea
 		ids[i] = v[i].ID
 	}
 	return _c.AddRecurringBillIDs(ids...)
+}
+
+// AddInviteCodeIDs adds the "invite_codes" edge to the InviteCode entity by IDs.
+func (_c *HouseholdCreate) AddInviteCodeIDs(ids ...int) *HouseholdCreate {
+	_c.mutation.AddInviteCodeIDs(ids...)
+	return _c
+}
+
+// AddInviteCodes adds the "invite_codes" edges to the InviteCode entity.
+func (_c *HouseholdCreate) AddInviteCodes(v ...*InviteCode) *HouseholdCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInviteCodeIDs(ids...)
 }
 
 // Mutation returns the HouseholdMutation object of the builder.
@@ -375,6 +391,22 @@ func (_c *HouseholdCreate) createSpec() (*Household, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(recurringbill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.InviteCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

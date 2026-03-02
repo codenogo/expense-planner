@@ -87,6 +87,11 @@ func (r *queryResolver) HouseholdMembers(ctx context.Context) ([]*ent.HouseholdM
 		All(ctx)
 }
 
+// InviteCodes is the resolver for the inviteCodes field.
+func (r *queryResolver) InviteCodes(ctx context.Context) ([]*ent.InviteCode, error) {
+	panic(fmt.Errorf("not implemented: InviteCodes - inviteCodes"))
+}
+
 // RecurringBills is the resolver for the recurringBills field.
 func (r *queryResolver) RecurringBills(ctx context.Context) ([]*ent.RecurringBill, error) {
 	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)

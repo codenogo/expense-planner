@@ -69,6 +69,18 @@ func (f HouseholdMemberFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HouseholdMemberMutation", m)
 }
 
+// The InviteCodeFunc type is an adapter to allow the use of ordinary
+// function as InviteCode mutator.
+type InviteCodeFunc func(context.Context, *ent.InviteCodeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f InviteCodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.InviteCodeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InviteCodeMutation", m)
+}
+
 // The PlaceholderFunc type is an adapter to allow the use of ordinary
 // function as Placeholder mutator.
 type PlaceholderFunc func(context.Context, *ent.PlaceholderMutation) (ent.Value, error)

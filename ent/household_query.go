@@ -17,6 +17,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/predicate"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/tag"
@@ -37,6 +38,7 @@ type HouseholdQuery struct {
 	withBudgets             *BudgetQuery
 	withTags                *TagQuery
 	withRecurringBills      *RecurringBillQuery
+	withInviteCodes         *InviteCodeQuery
 	modifiers               []func(*sql.Selector)
 	loadTotal               []func(context.Context, []*Household) error
 	withNamedMembers        map[string]*HouseholdMemberQuery
@@ -46,6 +48,7 @@ type HouseholdQuery struct {
 	withNamedBudgets        map[string]*BudgetQuery
 	withNamedTags           map[string]*TagQuery
 	withNamedRecurringBills map[string]*RecurringBillQuery
+	withNamedInviteCodes    map[string]*InviteCodeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -229,6 +232,28 @@ func (_q *HouseholdQuery) QueryRecurringBills() *RecurringBillQuery {
 			sqlgraph.From(household.Table, household.FieldID, selector),
 			sqlgraph.To(recurringbill.Table, recurringbill.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, household.RecurringBillsTable, household.RecurringBillsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryInviteCodes chains the current query on the "invite_codes" edge.
+func (_q *HouseholdQuery) QueryInviteCodes() *InviteCodeQuery {
+	query := (&InviteCodeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, selector),
+			sqlgraph.To(invitecode.Table, invitecode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.InviteCodesTable, household.InviteCodesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -435,6 +460,7 @@ func (_q *HouseholdQuery) Clone() *HouseholdQuery {
 		withBudgets:        _q.withBudgets.Clone(),
 		withTags:           _q.withTags.Clone(),
 		withRecurringBills: _q.withRecurringBills.Clone(),
+		withInviteCodes:    _q.withInviteCodes.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -518,6 +544,17 @@ func (_q *HouseholdQuery) WithRecurringBills(opts ...func(*RecurringBillQuery)) 
 	return _q
 }
 
+// WithInviteCodes tells the query-builder to eager-load the nodes that are connected to
+// the "invite_codes" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithInviteCodes(opts ...func(*InviteCodeQuery)) *HouseholdQuery {
+	query := (&InviteCodeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInviteCodes = query
+	return _q
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
@@ -596,7 +633,7 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 	var (
 		nodes       = []*Household{}
 		_spec       = _q.querySpec()
-		loadedTypes = [7]bool{
+		loadedTypes = [8]bool{
 			_q.withMembers != nil,
 			_q.withAccounts != nil,
 			_q.withCategories != nil,
@@ -604,6 +641,7 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 			_q.withBudgets != nil,
 			_q.withTags != nil,
 			_q.withRecurringBills != nil,
+			_q.withInviteCodes != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -676,6 +714,13 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 			return nil, err
 		}
 	}
+	if query := _q.withInviteCodes; query != nil {
+		if err := _q.loadInviteCodes(ctx, query, nodes,
+			func(n *Household) { n.Edges.InviteCodes = []*InviteCode{} },
+			func(n *Household, e *InviteCode) { n.Edges.InviteCodes = append(n.Edges.InviteCodes, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedMembers {
 		if err := _q.loadMembers(ctx, query, nodes,
 			func(n *Household) { n.appendNamedMembers(name) },
@@ -722,6 +767,13 @@ func (_q *HouseholdQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Ho
 		if err := _q.loadRecurringBills(ctx, query, nodes,
 			func(n *Household) { n.appendNamedRecurringBills(name) },
 			func(n *Household, e *RecurringBill) { n.appendNamedRecurringBills(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedInviteCodes {
+		if err := _q.loadInviteCodes(ctx, query, nodes,
+			func(n *Household) { n.appendNamedInviteCodes(name) },
+			func(n *Household, e *InviteCode) { n.appendNamedInviteCodes(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -950,6 +1002,37 @@ func (_q *HouseholdQuery) loadRecurringBills(ctx context.Context, query *Recurri
 	}
 	return nil
 }
+func (_q *HouseholdQuery) loadInviteCodes(ctx context.Context, query *InviteCodeQuery, nodes []*Household, init func(*Household), assign func(*Household, *InviteCode)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Household)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.InviteCode(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(household.InviteCodesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.household_invite_codes
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "household_invite_codes" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "household_invite_codes" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
 
 func (_q *HouseholdQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -1130,6 +1213,20 @@ func (_q *HouseholdQuery) WithNamedRecurringBills(name string, opts ...func(*Rec
 		_q.withNamedRecurringBills = make(map[string]*RecurringBillQuery)
 	}
 	_q.withNamedRecurringBills[name] = query
+	return _q
+}
+
+// WithNamedInviteCodes tells the query-builder to eager-load the nodes that are connected to the "invite_codes"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *HouseholdQuery) WithNamedInviteCodes(name string, opts ...func(*InviteCodeQuery)) *HouseholdQuery {
+	query := (&InviteCodeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedInviteCodes == nil {
+		_q.withNamedInviteCodes = make(map[string]*InviteCodeQuery)
+	}
+	_q.withNamedInviteCodes[name] = query
 	return _q
 }
 

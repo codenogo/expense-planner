@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/predicate"
 	"github.com/expenser/expense-planner/ent/transaction"
 	"github.com/expenser/expense-planner/ent/user"
@@ -27,10 +28,12 @@ type UserQuery struct {
 	predicates            []predicate.User
 	withMembers           *HouseholdMemberQuery
 	withTransactions      *TransactionQuery
+	withInviteCodes       *InviteCodeQuery
 	modifiers             []func(*sql.Selector)
 	loadTotal             []func(context.Context, []*User) error
 	withNamedMembers      map[string]*HouseholdMemberQuery
 	withNamedTransactions map[string]*TransactionQuery
+	withNamedInviteCodes  map[string]*InviteCodeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -104,6 +107,28 @@ func (_q *UserQuery) QueryTransactions() *TransactionQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(transaction.Table, transaction.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.TransactionsTable, user.TransactionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryInviteCodes chains the current query on the "invite_codes" edge.
+func (_q *UserQuery) QueryInviteCodes() *InviteCodeQuery {
+	query := (&InviteCodeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(invitecode.Table, invitecode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.InviteCodesTable, user.InviteCodesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -305,6 +330,7 @@ func (_q *UserQuery) Clone() *UserQuery {
 		predicates:       append([]predicate.User{}, _q.predicates...),
 		withMembers:      _q.withMembers.Clone(),
 		withTransactions: _q.withTransactions.Clone(),
+		withInviteCodes:  _q.withInviteCodes.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -330,6 +356,17 @@ func (_q *UserQuery) WithTransactions(opts ...func(*TransactionQuery)) *UserQuer
 		opt(query)
 	}
 	_q.withTransactions = query
+	return _q
+}
+
+// WithInviteCodes tells the query-builder to eager-load the nodes that are connected to
+// the "invite_codes" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithInviteCodes(opts ...func(*InviteCodeQuery)) *UserQuery {
+	query := (&InviteCodeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInviteCodes = query
 	return _q
 }
 
@@ -411,9 +448,10 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withMembers != nil,
 			_q.withTransactions != nil,
+			_q.withInviteCodes != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -451,6 +489,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 			return nil, err
 		}
 	}
+	if query := _q.withInviteCodes; query != nil {
+		if err := _q.loadInviteCodes(ctx, query, nodes,
+			func(n *User) { n.Edges.InviteCodes = []*InviteCode{} },
+			func(n *User, e *InviteCode) { n.Edges.InviteCodes = append(n.Edges.InviteCodes, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedMembers {
 		if err := _q.loadMembers(ctx, query, nodes,
 			func(n *User) { n.appendNamedMembers(name) },
@@ -462,6 +507,13 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadTransactions(ctx, query, nodes,
 			func(n *User) { n.appendNamedTransactions(name) },
 			func(n *User, e *Transaction) { n.appendNamedTransactions(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedInviteCodes {
+		if err := _q.loadInviteCodes(ctx, query, nodes,
+			func(n *User) { n.appendNamedInviteCodes(name) },
+			func(n *User, e *InviteCode) { n.appendNamedInviteCodes(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -530,6 +582,37 @@ func (_q *UserQuery) loadTransactions(ctx context.Context, query *TransactionQue
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_transactions" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadInviteCodes(ctx context.Context, query *InviteCodeQuery, nodes []*User, init func(*User), assign func(*User, *InviteCode)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.InviteCode(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.InviteCodesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_invite_codes
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_invite_codes" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_invite_codes" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -645,6 +728,20 @@ func (_q *UserQuery) WithNamedTransactions(name string, opts ...func(*Transactio
 		_q.withNamedTransactions = make(map[string]*TransactionQuery)
 	}
 	_q.withNamedTransactions[name] = query
+	return _q
+}
+
+// WithNamedInviteCodes tells the query-builder to eager-load the nodes that are connected to the "invite_codes"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithNamedInviteCodes(name string, opts ...func(*InviteCodeQuery)) *UserQuery {
+	query := (&InviteCodeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedInviteCodes == nil {
+		_q.withNamedInviteCodes = make(map[string]*InviteCodeQuery)
+	}
+	_q.withNamedInviteCodes[name] = query
 	return _q
 }
 

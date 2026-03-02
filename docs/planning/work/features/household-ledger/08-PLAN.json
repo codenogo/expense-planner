@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 2,
+  "feature": "household-ledger",
+  "planNumber": "08",
+  "goal": "Add household member invite-code flow and member management (remove, role change)",
+  "tasks": [
+    {
+      "name": "Create InviteCode ent schema and run codegen",
+      "files": [
+        "ent/schema/invite_code.go",
+        "ent/schema/household.go"
+      ],
+      "microSteps": [
+        "Create ent/schema/invite_code.go with fields: code (string, unique), expires_at (time), used (bool, default false), created_at (time, immutable)",
+        "Add edges: From household (required, unique), From created_by user (required, unique)",
+        "Add entgql annotations for QueryField and MutationCreate",
+        "Add 'invite_codes' edge to Household schema",
+        "Run go generate ./ent to generate ent code",
+        "Run go build ./... to verify compilation"
+      ],
+      "tdd": {
+        "required": false,
+        "reason": "Schema/codegen task — verified by successful go generate and go build"
+      },
+      "action": "Create a new ent schema for InviteCode that stores household invite codes. Each code is a unique random string with an expiry time, linked to the household and the user who created it. Add the reverse edge on Household. Run ent codegen and verify build.",
+      "verify": ["go generate ./ent", "go build ./..."]
+    },
+    {
+      "name": "Create HouseholdService with invite/join/manage logic and tests",
+      "files": [
+        "internal/service/household.go",
+        "internal/service/household_test.go"
+      ],
+      "microSteps": [
+        "Write test for CreateInviteCode: owner creates code, non-owner rejected",
+        "Run failing test to verify RED",
+        "Implement CreateInviteCode: verify caller is owner, generate crypto-random 8-char code, store with 7-day expiry",
+        "Run passing test to verify GREEN",
+        "Write test for JoinHousehold: valid code joins, expired code rejected, already-member rejected",
+        "Run failing test to verify RED",
+        "Implement JoinHousehold: validate code, check not expired/used, check not already member, create HouseholdMember, mark code used",
+        "Run passing test to verify GREEN",
+        "Write test for RemoveMember: owner removes member, non-owner rejected, cannot remove self as last owner",
+        "Run failing test to verify RED",
+        "Implement RemoveMember: verify caller is owner, prevent removing last owner, delete membership",
+        "Run passing test to verify GREEN",
+        "Write test for UpdateMemberRole: owner promotes/demotes, non-owner rejected",
+        "Run failing test to verify RED",
+        "Implement UpdateMemberRole: verify caller is owner, update role",
+        "Run passing test to verify GREEN"
+      ],
+      "tdd": {
+        "required": true,
+        "failingVerify": ["go test -count=1 -run TestHousehold ./internal/service/..."],
+        "passingVerify": ["go test -count=1 -run TestHousehold ./internal/service/..."]
+      },
+      "action": "Create HouseholdService with four methods: CreateInviteCode (owner-only, generates random code with 7-day expiry), JoinHousehold (validates code, adds member), RemoveMember (owner-only, prevents removing last owner), UpdateMemberRole (owner-only). Use crypto/rand for code generation. Write table-driven tests using enttest SQLite client.",
+      "verify": ["go test -count=1 -run TestHousehold ./internal/service/..."],
+      "blockedBy": [0]
+    },
+    {
+      "name": "Wire member management to GraphQL mutations and resolvers",
+      "files": [
+        "graph/member.graphqls",
+        "graph/member.resolvers.go",
+        "graph/resolver.go",
+        "cmd/expense-planner/main.go"
+      ],
+      "microSteps": [
+        "Create graph/member.graphqls with mutations: createInviteCode(householdID), joinHousehold(code), removeMember(householdID, userID), updateMemberRole(householdID, userID, role)",
+        "Add HouseholdSvc field to Resolver struct in resolver.go",
+        "Run gqlgen generate to scaffold resolvers",
+        "Implement resolver methods calling HouseholdService with auth checks",
+        "Wire HouseholdService in main.go",
+        "Run go build ./... and go test -count=1 ./... to verify"
+      ],
+      "tdd": {
+        "required": false,
+        "reason": "Thin resolver layer delegating to tested service — verified by build + full test suite"
+      },
+      "action": "Create member.graphqls with four mutations. Add HouseholdSvc to Resolver. Run gqlgen generate. Implement resolvers that extract UserFromContext, call HouseholdService methods, and return results. Wire service in main.go.",
+      "verify": ["go build ./...", "go vet ./...", "go test -count=1 ./..."],
+      "blockedBy": [1]
+    }
+  ],
+  "planVerify": ["go build ./...", "go vet ./...", "go test -count=1 ./..."],
+  "commitMessage": "feat(household-ledger): add member invite-code flow and household management",
+  "timestamp": "2026-03-02T00:00:00Z"
+}

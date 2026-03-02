@@ -1,6 +1,6 @@
 # Review Report
 
-**Timestamp:** 2026-03-02T00:41:05Z
+**Timestamp:** 2026-03-02T01:11:25Z
 **Branch:** feature/household-ledger
 **Feature:** household-ledger
 
@@ -19,7 +19,7 @@
   - tokenTelemetry: in=0 out=0 saved=0 (0.0%)
 - typecheck: **skipped**
 - test: **pass** (`go test ./... -short`, cwd `.`)
-  - tokenTelemetry: in=438 out=442 saved=0 (0.0%)
+  - tokenTelemetry: in=456 out=459 saved=0 (0.0%)
 
 ## Verdict
 

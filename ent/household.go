@@ -45,11 +45,13 @@ type HouseholdEdges struct {
 	Tags []*Tag `json:"tags,omitempty"`
 	// RecurringBills holds the value of the recurring_bills edge.
 	RecurringBills []*RecurringBill `json:"recurring_bills,omitempty"`
+	// InviteCodes holds the value of the invite_codes edge.
+	InviteCodes []*InviteCode `json:"invite_codes,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [7]bool
+	loadedTypes [8]bool
 	// totalCount holds the count of the edges above.
-	totalCount [7]map[string]int
+	totalCount [8]map[string]int
 
 	namedMembers        map[string][]*HouseholdMember
 	namedAccounts       map[string][]*Account
@@ -58,6 +60,7 @@ type HouseholdEdges struct {
 	namedBudgets        map[string][]*Budget
 	namedTags           map[string][]*Tag
 	namedRecurringBills map[string][]*RecurringBill
+	namedInviteCodes    map[string][]*InviteCode
 }
 
 // MembersOrErr returns the Members value or an error if the edge
@@ -121,6 +124,15 @@ func (e HouseholdEdges) RecurringBillsOrErr() ([]*RecurringBill, error) {
 		return e.RecurringBills, nil
 	}
 	return nil, &NotLoadedError{edge: "recurring_bills"}
+}
+
+// InviteCodesOrErr returns the InviteCodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e HouseholdEdges) InviteCodesOrErr() ([]*InviteCode, error) {
+	if e.loadedTypes[7] {
+		return e.InviteCodes, nil
+	}
+	return nil, &NotLoadedError{edge: "invite_codes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -219,6 +231,11 @@ func (_m *Household) QueryTags() *TagQuery {
 // QueryRecurringBills queries the "recurring_bills" edge of the Household entity.
 func (_m *Household) QueryRecurringBills() *RecurringBillQuery {
 	return NewHouseholdClient(_m.config).QueryRecurringBills(_m)
+}
+
+// QueryInviteCodes queries the "invite_codes" edge of the Household entity.
+func (_m *Household) QueryInviteCodes() *InviteCodeQuery {
+	return NewHouseholdClient(_m.config).QueryInviteCodes(_m)
 }
 
 // Update returns a builder for updating this Household.
@@ -421,6 +438,30 @@ func (_m *Household) appendNamedRecurringBills(name string, edges ...*RecurringB
 		_m.Edges.namedRecurringBills[name] = []*RecurringBill{}
 	} else {
 		_m.Edges.namedRecurringBills[name] = append(_m.Edges.namedRecurringBills[name], edges...)
+	}
+}
+
+// NamedInviteCodes returns the InviteCodes named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Household) NamedInviteCodes(name string) ([]*InviteCode, error) {
+	if _m.Edges.namedInviteCodes == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedInviteCodes[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Household) appendNamedInviteCodes(name string, edges ...*InviteCode) {
+	if _m.Edges.namedInviteCodes == nil {
+		_m.Edges.namedInviteCodes = make(map[string][]*InviteCode)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedInviteCodes[name] = []*InviteCode{}
+	} else {
+		_m.Edges.namedInviteCodes[name] = append(_m.Edges.namedInviteCodes[name], edges...)
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/placeholder"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/tag"
@@ -43,6 +44,8 @@ type Client struct {
 	Household *HouseholdClient
 	// HouseholdMember is the client for interacting with the HouseholdMember builders.
 	HouseholdMember *HouseholdMemberClient
+	// InviteCode is the client for interacting with the InviteCode builders.
+	InviteCode *InviteCodeClient
 	// Placeholder is the client for interacting with the Placeholder builders.
 	Placeholder *PlaceholderClient
 	// RecurringBill is the client for interacting with the RecurringBill builders.
@@ -73,6 +76,7 @@ func (c *Client) init() {
 	c.Category = NewCategoryClient(c.config)
 	c.Household = NewHouseholdClient(c.config)
 	c.HouseholdMember = NewHouseholdMemberClient(c.config)
+	c.InviteCode = NewInviteCodeClient(c.config)
 	c.Placeholder = NewPlaceholderClient(c.config)
 	c.RecurringBill = NewRecurringBillClient(c.config)
 	c.Tag = NewTagClient(c.config)
@@ -176,6 +180,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Category:         NewCategoryClient(cfg),
 		Household:        NewHouseholdClient(cfg),
 		HouseholdMember:  NewHouseholdMemberClient(cfg),
+		InviteCode:       NewInviteCodeClient(cfg),
 		Placeholder:      NewPlaceholderClient(cfg),
 		RecurringBill:    NewRecurringBillClient(cfg),
 		Tag:              NewTagClient(cfg),
@@ -206,6 +211,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Category:         NewCategoryClient(cfg),
 		Household:        NewHouseholdClient(cfg),
 		HouseholdMember:  NewHouseholdMemberClient(cfg),
+		InviteCode:       NewInviteCodeClient(cfg),
 		Placeholder:      NewPlaceholderClient(cfg),
 		RecurringBill:    NewRecurringBillClient(cfg),
 		Tag:              NewTagClient(cfg),
@@ -241,8 +247,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Account, c.Budget, c.Category, c.Household, c.HouseholdMember, c.Placeholder,
-		c.RecurringBill, c.Tag, c.Transaction, c.TransactionEntry, c.User,
+		c.Account, c.Budget, c.Category, c.Household, c.HouseholdMember, c.InviteCode,
+		c.Placeholder, c.RecurringBill, c.Tag, c.Transaction, c.TransactionEntry,
+		c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -252,8 +259,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Account, c.Budget, c.Category, c.Household, c.HouseholdMember, c.Placeholder,
-		c.RecurringBill, c.Tag, c.Transaction, c.TransactionEntry, c.User,
+		c.Account, c.Budget, c.Category, c.Household, c.HouseholdMember, c.InviteCode,
+		c.Placeholder, c.RecurringBill, c.Tag, c.Transaction, c.TransactionEntry,
+		c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -272,6 +280,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Household.mutate(ctx, m)
 	case *HouseholdMemberMutation:
 		return c.HouseholdMember.mutate(ctx, m)
+	case *InviteCodeMutation:
+		return c.InviteCode.mutate(ctx, m)
 	case *PlaceholderMutation:
 		return c.Placeholder.mutate(ctx, m)
 	case *RecurringBillMutation:
@@ -1068,6 +1078,22 @@ func (c *HouseholdClient) QueryRecurringBills(_m *Household) *RecurringBillQuery
 	return query
 }
 
+// QueryInviteCodes queries the invite_codes edge of a Household.
+func (c *HouseholdClient) QueryInviteCodes(_m *Household) *InviteCodeQuery {
+	query := (&InviteCodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(household.Table, household.FieldID, id),
+			sqlgraph.To(invitecode.Table, invitecode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, household.InviteCodesTable, household.InviteCodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *HouseholdClient) Hooks() []Hook {
 	return c.hooks.Household
@@ -1255,6 +1281,171 @@ func (c *HouseholdMemberClient) mutate(ctx context.Context, m *HouseholdMemberMu
 		return (&HouseholdMemberDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown HouseholdMember mutation op: %q", m.Op())
+	}
+}
+
+// InviteCodeClient is a client for the InviteCode schema.
+type InviteCodeClient struct {
+	config
+}
+
+// NewInviteCodeClient returns a client for the InviteCode from the given config.
+func NewInviteCodeClient(c config) *InviteCodeClient {
+	return &InviteCodeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `invitecode.Hooks(f(g(h())))`.
+func (c *InviteCodeClient) Use(hooks ...Hook) {
+	c.hooks.InviteCode = append(c.hooks.InviteCode, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `invitecode.Intercept(f(g(h())))`.
+func (c *InviteCodeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.InviteCode = append(c.inters.InviteCode, interceptors...)
+}
+
+// Create returns a builder for creating a InviteCode entity.
+func (c *InviteCodeClient) Create() *InviteCodeCreate {
+	mutation := newInviteCodeMutation(c.config, OpCreate)
+	return &InviteCodeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of InviteCode entities.
+func (c *InviteCodeClient) CreateBulk(builders ...*InviteCodeCreate) *InviteCodeCreateBulk {
+	return &InviteCodeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *InviteCodeClient) MapCreateBulk(slice any, setFunc func(*InviteCodeCreate, int)) *InviteCodeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &InviteCodeCreateBulk{err: fmt.Errorf("calling to InviteCodeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*InviteCodeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &InviteCodeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for InviteCode.
+func (c *InviteCodeClient) Update() *InviteCodeUpdate {
+	mutation := newInviteCodeMutation(c.config, OpUpdate)
+	return &InviteCodeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *InviteCodeClient) UpdateOne(_m *InviteCode) *InviteCodeUpdateOne {
+	mutation := newInviteCodeMutation(c.config, OpUpdateOne, withInviteCode(_m))
+	return &InviteCodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *InviteCodeClient) UpdateOneID(id int) *InviteCodeUpdateOne {
+	mutation := newInviteCodeMutation(c.config, OpUpdateOne, withInviteCodeID(id))
+	return &InviteCodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for InviteCode.
+func (c *InviteCodeClient) Delete() *InviteCodeDelete {
+	mutation := newInviteCodeMutation(c.config, OpDelete)
+	return &InviteCodeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *InviteCodeClient) DeleteOne(_m *InviteCode) *InviteCodeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *InviteCodeClient) DeleteOneID(id int) *InviteCodeDeleteOne {
+	builder := c.Delete().Where(invitecode.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &InviteCodeDeleteOne{builder}
+}
+
+// Query returns a query builder for InviteCode.
+func (c *InviteCodeClient) Query() *InviteCodeQuery {
+	return &InviteCodeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeInviteCode},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a InviteCode entity by its id.
+func (c *InviteCodeClient) Get(ctx context.Context, id int) (*InviteCode, error) {
+	return c.Query().Where(invitecode.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *InviteCodeClient) GetX(ctx context.Context, id int) *InviteCode {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryHousehold queries the household edge of a InviteCode.
+func (c *InviteCodeClient) QueryHousehold(_m *InviteCode) *HouseholdQuery {
+	query := (&HouseholdClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(invitecode.Table, invitecode.FieldID, id),
+			sqlgraph.To(household.Table, household.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, invitecode.HouseholdTable, invitecode.HouseholdColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCreatedBy queries the created_by edge of a InviteCode.
+func (c *InviteCodeClient) QueryCreatedBy(_m *InviteCode) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(invitecode.Table, invitecode.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, invitecode.CreatedByTable, invitecode.CreatedByColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *InviteCodeClient) Hooks() []Hook {
+	return c.hooks.InviteCode
+}
+
+// Interceptors returns the client interceptors.
+func (c *InviteCodeClient) Interceptors() []Interceptor {
+	return c.inters.InviteCode
+}
+
+func (c *InviteCodeClient) mutate(ctx context.Context, m *InviteCodeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&InviteCodeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&InviteCodeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&InviteCodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&InviteCodeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown InviteCode mutation op: %q", m.Op())
 	}
 }
 
@@ -2239,6 +2430,22 @@ func (c *UserClient) QueryTransactions(_m *User) *TransactionQuery {
 	return query
 }
 
+// QueryInviteCodes queries the invite_codes edge of a User.
+func (c *UserClient) QueryInviteCodes(_m *User) *InviteCodeQuery {
+	query := (&InviteCodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(invitecode.Table, invitecode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.InviteCodesTable, user.InviteCodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -2267,11 +2474,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Account, Budget, Category, Household, HouseholdMember, Placeholder,
+		Account, Budget, Category, Household, HouseholdMember, InviteCode, Placeholder,
 		RecurringBill, Tag, Transaction, TransactionEntry, User []ent.Hook
 	}
 	inters struct {
-		Account, Budget, Category, Household, HouseholdMember, Placeholder,
+		Account, Budget, Category, Household, HouseholdMember, InviteCode, Placeholder,
 		RecurringBill, Tag, Transaction, TransactionEntry, User []ent.Interceptor
 	}
 )

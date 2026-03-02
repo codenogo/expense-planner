@@ -11,6 +11,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/tag"
 	"github.com/expenser/expense-planner/ent/transaction"
@@ -487,6 +488,19 @@ func (_q *HouseholdQuery) collectField(ctx context.Context, oneNode bool, opCtx 
 			_q.WithNamedRecurringBills(alias, func(wq *RecurringBillQuery) {
 				*wq = *query
 			})
+
+		case "inviteCodes":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&InviteCodeClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, invitecodeImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedInviteCodes(alias, func(wq *InviteCodeQuery) {
+				*wq = *query
+			})
 		case "name":
 			if _, ok := fieldSeen[household.FieldName]; !ok {
 				selectedFields = append(selectedFields, household.FieldName)
@@ -613,6 +627,107 @@ type householdmemberPaginateArgs struct {
 
 func newHouseholdMemberPaginateArgs(rv map[string]any) *householdmemberPaginateArgs {
 	args := &householdmemberPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *InviteCodeQuery) CollectFields(ctx context.Context, satisfies ...string) (*InviteCodeQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *InviteCodeQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(invitecode.Columns))
+		selectedFields = []string{invitecode.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+
+		case "household":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&HouseholdClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, householdImplementors)...); err != nil {
+				return err
+			}
+			_q.withHousehold = query
+
+		case "createdBy":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&UserClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, oneNode, opCtx, field, path, mayAddCondition(satisfies, userImplementors)...); err != nil {
+				return err
+			}
+			_q.withCreatedBy = query
+		case "code":
+			if _, ok := fieldSeen[invitecode.FieldCode]; !ok {
+				selectedFields = append(selectedFields, invitecode.FieldCode)
+				fieldSeen[invitecode.FieldCode] = struct{}{}
+			}
+		case "expiresAt":
+			if _, ok := fieldSeen[invitecode.FieldExpiresAt]; !ok {
+				selectedFields = append(selectedFields, invitecode.FieldExpiresAt)
+				fieldSeen[invitecode.FieldExpiresAt] = struct{}{}
+			}
+		case "used":
+			if _, ok := fieldSeen[invitecode.FieldUsed]; !ok {
+				selectedFields = append(selectedFields, invitecode.FieldUsed)
+				fieldSeen[invitecode.FieldUsed] = struct{}{}
+			}
+		case "createdAt":
+			if _, ok := fieldSeen[invitecode.FieldCreatedAt]; !ok {
+				selectedFields = append(selectedFields, invitecode.FieldCreatedAt)
+				fieldSeen[invitecode.FieldCreatedAt] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type invitecodePaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []InviteCodePaginateOption
+}
+
+func newInviteCodePaginateArgs(rv map[string]any) *invitecodePaginateArgs {
+	args := &invitecodePaginateArgs{}
 	if rv == nil {
 		return args
 	}
@@ -1147,6 +1262,19 @@ func (_q *UserQuery) collectField(ctx context.Context, oneNode bool, opCtx *grap
 				return err
 			}
 			_q.WithNamedTransactions(alias, func(wq *TransactionQuery) {
+				*wq = *query
+			})
+
+		case "inviteCodes":
+			var (
+				alias = field.Alias
+				path  = append(path, alias)
+				query = (&InviteCodeClient{config: _q.config}).Query()
+			)
+			if err := query.collectField(ctx, false, opCtx, field, path, mayAddCondition(satisfies, invitecodeImplementors)...); err != nil {
+				return err
+			}
+			_q.WithNamedInviteCodes(alias, func(wq *InviteCodeQuery) {
 				*wq = *query
 			})
 		case "name":

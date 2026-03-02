@@ -15,6 +15,7 @@ import (
 	"github.com/expenser/expense-planner/ent/category"
 	"github.com/expenser/expense-planner/ent/household"
 	"github.com/expenser/expense-planner/ent/householdmember"
+	"github.com/expenser/expense-planner/ent/invitecode"
 	"github.com/expenser/expense-planner/ent/predicate"
 	"github.com/expenser/expense-planner/ent/recurringbill"
 	"github.com/expenser/expense-planner/ent/tag"
@@ -167,6 +168,21 @@ func (_u *HouseholdUpdate) AddRecurringBills(v ...*RecurringBill) *HouseholdUpda
 	return _u.AddRecurringBillIDs(ids...)
 }
 
+// AddInviteCodeIDs adds the "invite_codes" edge to the InviteCode entity by IDs.
+func (_u *HouseholdUpdate) AddInviteCodeIDs(ids ...int) *HouseholdUpdate {
+	_u.mutation.AddInviteCodeIDs(ids...)
+	return _u
+}
+
+// AddInviteCodes adds the "invite_codes" edges to the InviteCode entity.
+func (_u *HouseholdUpdate) AddInviteCodes(v ...*InviteCode) *HouseholdUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInviteCodeIDs(ids...)
+}
+
 // Mutation returns the HouseholdMutation object of the builder.
 func (_u *HouseholdUpdate) Mutation() *HouseholdMutation {
 	return _u.mutation
@@ -317,6 +333,27 @@ func (_u *HouseholdUpdate) RemoveRecurringBills(v ...*RecurringBill) *HouseholdU
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRecurringBillIDs(ids...)
+}
+
+// ClearInviteCodes clears all "invite_codes" edges to the InviteCode entity.
+func (_u *HouseholdUpdate) ClearInviteCodes() *HouseholdUpdate {
+	_u.mutation.ClearInviteCodes()
+	return _u
+}
+
+// RemoveInviteCodeIDs removes the "invite_codes" edge to InviteCode entities by IDs.
+func (_u *HouseholdUpdate) RemoveInviteCodeIDs(ids ...int) *HouseholdUpdate {
+	_u.mutation.RemoveInviteCodeIDs(ids...)
+	return _u
+}
+
+// RemoveInviteCodes removes "invite_codes" edges to InviteCode entities.
+func (_u *HouseholdUpdate) RemoveInviteCodes(v ...*InviteCode) *HouseholdUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInviteCodeIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -694,6 +731,51 @@ func (_u *HouseholdUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInviteCodesIDs(); len(nodes) > 0 && !_u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InviteCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{household.Label}
@@ -847,6 +929,21 @@ func (_u *HouseholdUpdateOne) AddRecurringBills(v ...*RecurringBill) *HouseholdU
 	return _u.AddRecurringBillIDs(ids...)
 }
 
+// AddInviteCodeIDs adds the "invite_codes" edge to the InviteCode entity by IDs.
+func (_u *HouseholdUpdateOne) AddInviteCodeIDs(ids ...int) *HouseholdUpdateOne {
+	_u.mutation.AddInviteCodeIDs(ids...)
+	return _u
+}
+
+// AddInviteCodes adds the "invite_codes" edges to the InviteCode entity.
+func (_u *HouseholdUpdateOne) AddInviteCodes(v ...*InviteCode) *HouseholdUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInviteCodeIDs(ids...)
+}
+
 // Mutation returns the HouseholdMutation object of the builder.
 func (_u *HouseholdUpdateOne) Mutation() *HouseholdMutation {
 	return _u.mutation
@@ -997,6 +1094,27 @@ func (_u *HouseholdUpdateOne) RemoveRecurringBills(v ...*RecurringBill) *Househo
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRecurringBillIDs(ids...)
+}
+
+// ClearInviteCodes clears all "invite_codes" edges to the InviteCode entity.
+func (_u *HouseholdUpdateOne) ClearInviteCodes() *HouseholdUpdateOne {
+	_u.mutation.ClearInviteCodes()
+	return _u
+}
+
+// RemoveInviteCodeIDs removes the "invite_codes" edge to InviteCode entities by IDs.
+func (_u *HouseholdUpdateOne) RemoveInviteCodeIDs(ids ...int) *HouseholdUpdateOne {
+	_u.mutation.RemoveInviteCodeIDs(ids...)
+	return _u
+}
+
+// RemoveInviteCodes removes "invite_codes" edges to InviteCode entities.
+func (_u *HouseholdUpdateOne) RemoveInviteCodes(v ...*InviteCode) *HouseholdUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInviteCodeIDs(ids...)
 }
 
 // Where appends a list predicates to the HouseholdUpdate builder.
@@ -1397,6 +1515,51 @@ func (_u *HouseholdUpdateOne) sqlSave(ctx context.Context) (_node *Household, er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(recurringbill.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInviteCodesIDs(); len(nodes) > 0 && !_u.mutation.InviteCodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InviteCodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   household.InviteCodesTable,
+			Columns: []string{household.InviteCodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitecode.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
