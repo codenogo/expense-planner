@@ -28,12 +28,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = getAccessToken()
     if (token) {
-      // Decode basic user info from JWT payload (base64 middle segment)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        setUser({ id: payload.sub, name: payload.name || '', email: payload.email || '', createdAt: '', updatedAt: '' })
-      } catch {
+      const parts = token.split('.')
+      if (parts.length !== 3) {
         clearTokens()
+      } else {
+        try {
+          const payload = JSON.parse(atob(parts[1]))
+          setUser({ id: payload.sub, name: payload.name || '', email: payload.email || '', createdAt: '', updatedAt: '' })
+        } catch {
+          clearTokens()
+        }
       }
     }
     setLoading(false)

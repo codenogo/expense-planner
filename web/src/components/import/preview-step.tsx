@@ -142,7 +142,18 @@ export function PreviewStep({
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={onBack}>Back</Button>
-        <Button onClick={onContinue} disabled={rows.length === 0}>
+        <Button
+          onClick={() => {
+            const mergedRows = rows.map((row, i) =>
+              editedCategories[i]
+                ? { ...row, suggestedCategoryID: editedCategories[i].id, suggestedCategoryName: editedCategories[i].name }
+                : row
+            )
+            onPreviewLoaded(mergedRows)
+            onContinue()
+          }}
+          disabled={rows.length === 0}
+        >
           Continue to Confirm
         </Button>
       </div>

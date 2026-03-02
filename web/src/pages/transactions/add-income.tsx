@@ -32,6 +32,7 @@ export function AddIncomePage() {
   const [categoryId, setCategoryId] = useState('')
   const [date, setDate] = useState<Date>(new Date())
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const { data: categoriesData } = useQuery<{ categories: Category[] }>(CATEGORIES_QUERY)
 
@@ -46,10 +47,14 @@ export function AddIncomePage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setFormError(null)
     if (!currentHouseholdId) return
 
     const cents = Math.round(parseFloat(amount) * 100)
-    if (isNaN(cents) || cents <= 0) return
+    if (isNaN(cents) || cents <= 0) {
+      setFormError('Amount must be greater than zero')
+      return
+    }
 
     addIncome({
       variables: {
@@ -136,6 +141,7 @@ export function AddIncomePage() {
               </Popover>
             </div>
 
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
             {error && <p className="text-sm text-destructive">{error.message}</p>}
 
             <div className="flex gap-2">
