@@ -34,6 +34,7 @@ export function BillsPage() {
   const currency = currentHousehold?.baseCurrency ?? 'KES'
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<BillFormState>(defaultForm)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const { data, loading, error } = useQuery<{ recurringBills: RecurringBill[] }>(
     RECURRING_BILLS_QUERY,
@@ -65,6 +66,16 @@ export function BillsPage() {
     const dueDay = parseInt(form.dueDay, 10)
 
     if (isNaN(amountCents) || isNaN(dueDay)) return
+
+    if (amountCents <= 0) {
+      setFormError('Amount must be greater than zero')
+      return
+    }
+    if (dueDay < 1 || dueDay > 31) {
+      setFormError('Due day must be between 1 and 31')
+      return
+    }
+    setFormError(null)
 
     const input: Record<string, unknown> = {
       name: form.name.trim(),
@@ -185,6 +196,9 @@ export function BillsPage() {
                 )}
               </div>
 
+              {formError && (
+                <p className="text-sm text-destructive">{formError}</p>
+              )}
               {createError && (
                 <p className="text-sm text-destructive">{createError.message}</p>
               )}

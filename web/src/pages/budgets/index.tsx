@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { Link } from 'react-router-dom'
-import { BUDGETS_QUERY } from '@/graphql/budgets'
+import { BUDGETS_QUERY, BUDGET_PROGRESS_QUERY } from '@/graphql/budgets'
 import { useHousehold } from '@/providers/household-provider'
-import type { Budget } from '@/types/budget'
+import type { Budget, BudgetProgressEntry } from '@/types/budget'
 import { BudgetCard } from '@/components/budgets/budget-card'
 import { Button } from '@/components/ui/button'
 
@@ -35,8 +35,21 @@ export function BudgetsPage() {
     { skip: !currentHouseholdId }
   )
 
+  const { data: progressData } = useQuery<{ budgetProgress: BudgetProgressEntry[] }>(
+    BUDGET_PROGRESS_QUERY,
+    {
+      variables: { householdID: currentHouseholdId, month: selectedMonth },
+      skip: !currentHouseholdId,
+    }
+  )
+
   const allBudgets = data?.budgets ?? []
   const budgets = allBudgets.filter((b) => b.month === selectedMonth)
+
+  const spentMap = new Map<string, number>()
+  for (const entry of progressData?.budgetProgress ?? []) {
+    spentMap.set(String(entry.budgetID), entry.spentCents)
+  }
 
   return (
     <div className="space-y-6">
@@ -82,7 +95,7 @@ export function BudgetsPage() {
                 key={budget.id}
                 budget={budget}
                 currency={currency}
-                spentCents={budget.spentCents}
+                spentCents={spentMap.get(budget.id)}
               />
             ))}
           </div>

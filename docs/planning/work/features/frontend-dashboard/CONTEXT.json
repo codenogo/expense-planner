@@ -32,6 +32,16 @@
       "area": "budget-rollover",
       "decision": "Carry forward surplus",
       "rationale": "Unspent budget rolls into next month. Requires cumulative balance tracking: next_month_budget = base_budget + (prev_budget - prev_spent). Encourages saving and reflects real household behavior."
+    },
+    {
+      "area": "budget-progress-api",
+      "decision": "Add budgetProgress GraphQL query",
+      "rationale": "BudgetService.GetBudgetProgress exists in Go backend (tested) but is not exposed via GraphQL. Wire it as a new query: budgetProgress(householdID: ID!, month: String!): [BudgetProgressEntry!]! so the frontend budget list can show actual spent amounts and progress."
+    },
+    {
+      "area": "bill-validation",
+      "decision": "Add client-side validation for zero/negative amounts in bill form",
+      "rationale": "Backend enforces Positive() but client-side validation gives immediate UX feedback instead of a server round-trip error."
     }
   ],
   "constraints": [
@@ -45,7 +55,9 @@
     "Must support dark/light theme toggle",
     "CSV import must handle the existing ImportTransactions mutation"
   ],
-  "openQuestions": [],
+  "openQuestions": [
+    "Whether to also expose budget progress in the dashboardSummary query (deferred — separate feature)"
+  ],
   "relatedCode": [
     "cmd/expense-planner/main.go",
     "graph/member.graphqls",
@@ -57,7 +69,13 @@
     "internal/service/transaction.go",
     "internal/service/report.go",
     "internal/service/import.go",
-    "internal/service/jwt.go"
+    "internal/service/jwt.go",
+    "internal/service/budget.go",
+    "internal/service/budget_test.go",
+    "web/src/pages/budgets/index.tsx",
+    "web/src/pages/budgets/bills.tsx",
+    "web/src/graphql/budgets.ts",
+    "web/src/components/budgets/budget-card.tsx"
   ],
-  "timestamp": "2026-03-02T02:00:00Z"
+  "timestamp": "2026-03-02T07:30:00Z"
 }

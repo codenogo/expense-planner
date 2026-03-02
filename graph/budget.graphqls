@@ -1,0 +1,14 @@
+"""Budget vs actual spending for a single category in a month."""
+type BudgetProgressEntry {
+  budgetID: ID!
+  categoryID: ID!
+  month: String!
+  amountCents: Int!
+  spentCents: Int!
+  rollover: Boolean!
+}
+
+extend type Query {
+  """Budget progress for all categories in a household for a given month."""
+  budgetProgress(householdID: ID!, month: String!): [BudgetProgressEntry!]!
+}

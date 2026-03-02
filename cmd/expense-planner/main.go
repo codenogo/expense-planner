@@ -49,9 +49,12 @@ func main() {
 	// Create household service.
 	householdSvc := service.NewHouseholdService(client)
 
+	// Create budget service.
+	budgetSvc := service.NewBudgetService(client)
+
 	// Create GraphQL server.
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc, TxnSvc: txnSvc, ImportSvc: importSvc, ReportSvc: reportSvc, HouseholdSvc: householdSvc},
+		Resolvers: &graph.Resolver{Client: client, JWT: jwtSvc, TxnSvc: txnSvc, ImportSvc: importSvc, ReportSvc: reportSvc, HouseholdSvc: householdSvc, BudgetSvc: budgetSvc},
 	}))
 	srv.Use(entgql.Transactioner{TxOpener: client})
 

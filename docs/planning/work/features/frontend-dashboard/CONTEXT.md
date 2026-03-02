@@ -33,6 +33,16 @@ next_month_budget = base_budget + (prev_budget - prev_spent)
 ```
 Encourages saving and matches real household behavior.
 
+### Budget Progress API: Wire BudgetService to GraphQL
+`BudgetService.GetBudgetProgress` is implemented and tested in Go but not exposed via GraphQL. Need to:
+1. Add `BudgetProgressEntry` type and `budgetProgress` query to GraphQL schema
+2. Wire `BudgetService` into the resolver and main.go
+3. Update frontend `BUDGET_PROGRESS_QUERY` to use the new endpoint
+4. Feed real `spentCents` data into BudgetCard progress bars
+
+### Bill Form Validation: Client-side amount check
+Backend enforces `Positive()` constraint, but the frontend bill form should validate `amount > 0` and `dueDay` in range client-side for immediate UX feedback.
+
 ## Constraints
 
 - React 18+ / TypeScript strict
@@ -48,4 +58,8 @@ Encourages saving and matches real household behavior.
 - `cmd/expense-planner/main.go` — app entry, service wiring
 - `graph/*.graphqls` — GraphQL schema definitions
 - `graph/*resolvers.go` — resolver implementations
-- `internal/service/` — business logic (household, transaction, report, import, JWT)
+- `internal/service/` — business logic (household, transaction, report, import, JWT, budget)
+- `internal/service/budget.go` — BudgetService with GetBudgetProgress (implemented, tested, not wired to GraphQL)
+- `web/src/pages/budgets/` — budget list, create, bills pages
+- `web/src/graphql/budgets.ts` — budget GraphQL operations
+- `web/src/components/budgets/` — BudgetCard, BillCard components

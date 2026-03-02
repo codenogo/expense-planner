@@ -13,6 +13,15 @@ export interface Budget {
   spentCents?: number    // computed on client from transactions if needed
 }
 
+export interface BudgetProgressEntry {
+  budgetID: string
+  categoryID: string
+  month: string
+  amountCents: number
+  spentCents: number
+  rollover: boolean
+}
+
 export interface RecurringBill {
   id: string
   name: string

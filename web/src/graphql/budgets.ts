@@ -30,6 +30,19 @@ export const CREATE_BUDGET_MUTATION = gql`
   }
 `
 
+export const BUDGET_PROGRESS_QUERY = gql`
+  query BudgetProgress($householdID: ID!, $month: String!) {
+    budgetProgress(householdID: $householdID, month: $month) {
+      budgetID
+      categoryID
+      month
+      amountCents
+      spentCents
+      rollover
+    }
+  }
+`
+
 export const RECURRING_BILLS_QUERY = gql`
   query RecurringBills {
     recurringBills {
