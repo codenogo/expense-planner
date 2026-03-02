@@ -7,6 +7,7 @@ import { DashboardPage } from '@/pages/dashboard'
 import { TransactionsPage } from '@/pages/transactions/index'
 import { AddExpensePage } from '@/pages/transactions/add-expense'
 import { AddIncomePage } from '@/pages/transactions/add-income'
+import { ImportPage } from '@/pages/import/index'
 import { Toaster } from '@/components/ui/sonner'
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -33,7 +34,7 @@ export default function App() {
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="transactions/add-expense" element={<AddExpensePage />} />
           <Route path="transactions/add-income" element={<AddIncomePage />} />
-          <Route path="import" element={<PlaceholderPage title="Import" />} />
+          <Route path="import" element={<ImportPage />} />
           <Route path="reports" element={<PlaceholderPage title="Reports" />} />
           <Route path="budgets" element={<PlaceholderPage title="Budgets" />} />
           <Route path="household" element={<PlaceholderPage title="Household" />} />
