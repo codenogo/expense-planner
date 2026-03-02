@@ -35,3 +35,14 @@ export const SPENDING_BY_CATEGORY_QUERY = gql`
     }
   }
 `
+
+export const MONTHLY_TREND_QUERY = gql`
+  query MonthlyTrend($householdID: ID!, $months: Int!) {
+    monthlyTrend(householdID: $householdID, months: $months) {
+      month
+      incomeCents
+      expenseCents
+      netCents
+    }
+  }
+`
