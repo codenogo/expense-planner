@@ -58,3 +58,8 @@ func UserFromContext(ctx context.Context) *UserContext {
 	u, _ := ctx.Value(userContextKey).(*UserContext)
 	return u
 }
+
+// ContextWithUser returns a context with the given UserContext set.
+func ContextWithUser(ctx context.Context, uc *UserContext) context.Context {
+	return context.WithValue(ctx, userContextKey, uc)
+}

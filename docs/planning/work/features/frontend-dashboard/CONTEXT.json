@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "feature": "frontend-dashboard",
+  "displayName": "Frontend Dashboard",
+  "decisions": [
+    {
+      "area": "graphql-client",
+      "decision": "Apollo Client",
+      "rationale": "User preference. Mature ecosystem, largest community, excellent DevTools, normalized cache. Heavier than urql (~33KB vs ~12KB) but better tooling and wider adoption."
+    },
+    {
+      "area": "ui-framework",
+      "decision": "shadcn/ui + Tailwind CSS",
+      "rationale": "Copy-paste component model — no runtime dependency, full ownership of code. Radix UI primitives for accessibility. CSS variable-based theming enables dark mode natively. Active community (85K+ GitHub stars)."
+    },
+    {
+      "area": "dark-theme",
+      "decision": "CSS variables via Tailwind",
+      "rationale": "Inherent with shadcn/ui. Tailwind dark: variant + CSS custom properties. Single class toggle on <html> element. No additional library needed."
+    },
+    {
+      "area": "csv-import-ux",
+      "decision": "Step-by-step wizard",
+      "rationale": "Upload → preview first 5 rows → map columns via dropdowns → confirm and import. Guided flow reduces errors and supports non-technical users. Progressive disclosure keeps each step simple."
+    },
+    {
+      "area": "household-invite-flow",
+      "decision": "Invite code (already implemented)",
+      "rationale": "Resolved in plan 08. Crypto-random 8-char hex code with 7-day expiry. Owner generates code, invitee enters code to join. Transactional join with used-flag."
+    },
+    {
+      "area": "budget-rollover",
+      "decision": "Carry forward surplus",
+      "rationale": "Unspent budget rolls into next month. Requires cumulative balance tracking: next_month_budget = base_budget + (prev_budget - prev_spent). Encourages saving and reflects real household behavior."
+    },
+    {
+      "area": "budget-progress-api",
+      "decision": "Add budgetProgress GraphQL query",
+      "rationale": "BudgetService.GetBudgetProgress exists in Go backend (tested) but is not exposed via GraphQL. Wire it as a new query: budgetProgress(householdID: ID!, month: String!): [BudgetProgressEntry!]! so the frontend budget list can show actual spent amounts and progress."
+    },
+    {
+      "area": "bill-validation",
+      "decision": "Add client-side validation for zero/negative amounts in bill form",
+      "rationale": "Backend enforces Positive() but client-side validation gives immediate UX feedback instead of a server round-trip error."
+    },
+    {
+      "area": "report-resolver-auth",
+      "decision": "Add userHouseholdIDs() membership check to all 3 report resolvers",
+      "rationale": "Review blocker: SpendingByCategory, MonthlyTrend, DashboardSummary only check authentication via UserFromContext, not household membership. Any authenticated user can query any household's data. Fix: apply same pattern as budget.resolvers.go:17-31 (call userHouseholdIDs, loop to verify householdID, return access denied if not member)."
+    },
+    {
+      "area": "import-preview-auth",
+      "decision": "Add userHouseholdIDs() membership check to PreviewCSVImport resolver",
+      "rationale": "Review blocker: PreviewCSVImport checks auth but not household membership. CommitCSVImport (line 78) correctly checks membership. Apply the same userHouseholdIDs() pattern for consistency."
+    },
+    {
+      "area": "preview-category-propagation",
+      "decision": "Propagate edited categories from PreviewStep back to parent wizard state",
+      "rationale": "Review warning: editedCategories state in preview-step.tsx is local and never merged back to previewRows. When user changes categories in preview, the confirm step receives original suggestions. Fix: add onRowsUpdated callback to merge edited categories into previewRows before calling onContinue."
+    },
+    {
+      "area": "transaction-form-validation",
+      "decision": "Add formError state with visible feedback to add-expense and add-income forms",
+      "rationale": "Review warning: handleSubmit silently returns when amount is invalid. Budget forms (bills.tsx, create.tsx) handle this correctly with formError state. Apply same pattern."
+    },
+    {
+      "area": "jwt-structure-validation",
+      "decision": "Validate JWT has 3 parts before atob decoding",
+      "rationale": "Review warning: auth-provider.tsx decodes JWT via atob(token.split('.')[1]) without checking parts.length === 3. Try-catch mitigates crashes but an explicit guard is cleaner."
+    }
+  ],
+  "constraints": [
+    "React 18+ with TypeScript (strict mode)",
+    "Vite for build tooling (fast HMR, ESBuild)",
+    "Apollo Client v3 for GraphQL",
+    "shadcn/ui components (copy-paste, not npm package)",
+    "Tailwind CSS v3+ for styling",
+    "Backend is Go with entgo + gqlgen (GraphQL API at /query)",
+    "Auth via JWT (existing middleware)",
+    "Must support dark/light theme toggle",
+    "CSV import must handle the existing ImportTransactions mutation"
+  ],
+  "openQuestions": [],
+  "relatedCode": [
+    "cmd/expense-planner/main.go",
+    "graph/member.graphqls",
+    "graph/member.resolvers.go",
+    "graph/resolver.go",
+    "graph/generated.go",
+    "graph/ent.resolvers.go",
+    "graph/report.resolvers.go",
+    "graph/import.resolvers.go",
+    "graph/budget.resolvers.go",
+    "internal/service/household.go",
+    "internal/service/transaction.go",
+    "internal/service/report.go",
+    "internal/service/import.go",
+    "internal/service/jwt.go",
+    "internal/service/budget.go",
+    "internal/service/budget_test.go",
+    "web/src/pages/budgets/index.tsx",
+    "web/src/pages/budgets/bills.tsx",
+    "web/src/pages/transactions/add-expense.tsx",
+    "web/src/pages/transactions/add-income.tsx",
+    "web/src/pages/import/index.tsx",
+    "web/src/components/import/preview-step.tsx",
+    "web/src/providers/auth-provider.tsx",
+    "web/src/graphql/budgets.ts",
+    "web/src/components/budgets/budget-card.tsx"
+  ],
+  "timestamp": "2026-03-02T10:00:00Z"
+}

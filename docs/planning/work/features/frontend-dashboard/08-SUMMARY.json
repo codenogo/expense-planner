@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 2,
+  "feature": "frontend-dashboard",
+  "planNumber": "08",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create budget types, GraphQL ops, and budget list page",
+      "files": [
+        "web/src/types/budget.ts",
+        "web/src/graphql/budgets.ts",
+        "web/src/components/budgets/budget-card.tsx",
+        "web/src/pages/budgets/index.tsx"
+      ],
+      "commit": "7ba50fc"
+    },
+    {
+      "task": "Build create budget form with rollover toggle",
+      "files": [
+        "web/src/graphql/budgets.ts",
+        "web/src/pages/budgets/create.tsx",
+        "web/src/app.tsx"
+      ],
+      "commit": "3c24815"
+    },
+    {
+      "task": "Build recurring bills tracker and wire routes",
+      "files": [
+        "web/src/graphql/budgets.ts",
+        "web/src/components/budgets/bill-card.tsx",
+        "web/src/pages/budgets/bills.tsx",
+        "web/src/app.tsx",
+        "web/src/components/layout/sidebar.tsx"
+      ],
+      "commit": "f4b8eca"
+    }
+  ],
+  "verification": [
+    {"command": "cd web && npm run build", "result": "pass (built in 3.48s)"}
+  ],
+  "commit": "f4b8eca",
+  "timestamp": "2026-03-02T07:00:00Z"
+}

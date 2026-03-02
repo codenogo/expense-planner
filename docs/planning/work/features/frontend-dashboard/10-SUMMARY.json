@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "feature": "frontend-dashboard",
+  "planNumber": "10",
+  "outcome": "complete",
+  "changes": [
+    {
+      "file": "graph/report.resolvers.go",
+      "action": "modified",
+      "description": "Replaced auth-only UserFromContext check with userHouseholdIDs() + membership loop in SpendingByCategory, MonthlyTrend, and DashboardSummary resolvers. Removed unused middleware import."
+    },
+    {
+      "file": "graph/import.resolvers.go",
+      "action": "modified",
+      "description": "Replaced auth-only UserFromContext check with userHouseholdIDs() + membership loop in PreviewCSVImport resolver. CommitCSVImport unchanged (already had correct ent-based membership check)."
+    }
+  ],
+  "verification": [
+    { "command": "go build ./...", "result": "pass" },
+    { "command": "go vet ./...", "result": "pass" },
+    { "command": "go test ./... -short", "result": "pass" }
+  ],
+  "commit": "d8baac9",
+  "timestamp": "2026-03-02T11:00:00Z"
+}

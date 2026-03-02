@@ -74,6 +74,15 @@ type ComplexityRoot struct {
 		Rollover    func(childComplexity int) int
 	}
 
+	BudgetProgressEntry struct {
+		AmountCents func(childComplexity int) int
+		BudgetID    func(childComplexity int) int
+		CategoryID  func(childComplexity int) int
+		Month       func(childComplexity int) int
+		Rollover    func(childComplexity int) int
+		SpentCents  func(childComplexity int) int
+	}
+
 	Category struct {
 		Budgets        func(childComplexity int) int
 		Children       func(childComplexity int) int
@@ -197,6 +206,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Accounts           func(childComplexity int) int
 		BankPresets        func(childComplexity int) int
+		BudgetProgress     func(childComplexity int, householdID int, month string) int
 		Budgets            func(childComplexity int) int
 		Categories         func(childComplexity int) int
 		DashboardSummary   func(childComplexity int, householdID int) int
@@ -295,6 +305,7 @@ type QueryResolver interface {
 	Transactions(ctx context.Context) ([]*ent.Transaction, error)
 	TransactionEntries(ctx context.Context) ([]*ent.TransactionEntry, error)
 	Users(ctx context.Context) ([]*ent.User, error)
+	BudgetProgress(ctx context.Context, householdID int, month string) ([]*model.BudgetProgressEntry, error)
 	BankPresets(ctx context.Context) ([]*model.BankPreset, error)
 	SpendingByCategory(ctx context.Context, householdID int, startDate time.Time, endDate time.Time) ([]*model.CategorySpend, error)
 	MonthlyTrend(ctx context.Context, householdID int, months int) ([]*model.MonthSummary, error)
@@ -433,6 +444,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Budget.Rollover(childComplexity), true
+
+	case "BudgetProgressEntry.amountCents":
+		if e.ComplexityRoot.BudgetProgressEntry.AmountCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BudgetProgressEntry.AmountCents(childComplexity), true
+	case "BudgetProgressEntry.budgetID":
+		if e.ComplexityRoot.BudgetProgressEntry.BudgetID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BudgetProgressEntry.BudgetID(childComplexity), true
+	case "BudgetProgressEntry.categoryID":
+		if e.ComplexityRoot.BudgetProgressEntry.CategoryID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BudgetProgressEntry.CategoryID(childComplexity), true
+	case "BudgetProgressEntry.month":
+		if e.ComplexityRoot.BudgetProgressEntry.Month == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BudgetProgressEntry.Month(childComplexity), true
+	case "BudgetProgressEntry.rollover":
+		if e.ComplexityRoot.BudgetProgressEntry.Rollover == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BudgetProgressEntry.Rollover(childComplexity), true
+	case "BudgetProgressEntry.spentCents":
+		if e.ComplexityRoot.BudgetProgressEntry.SpentCents == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BudgetProgressEntry.SpentCents(childComplexity), true
 
 	case "Category.budgets":
 		if e.ComplexityRoot.Category.Budgets == nil {
@@ -1005,6 +1053,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.BankPresets(childComplexity), true
+	case "Query.budgetProgress":
+		if e.ComplexityRoot.Query.BudgetProgress == nil {
+			break
+		}
+
+		args, err := ec.field_Query_budgetProgress_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.BudgetProgress(childComplexity, args["householdID"].(int), args["month"].(string)), true
 	case "Query.budgets":
 		if e.ComplexityRoot.Query.Budgets == nil {
 			break
@@ -1456,7 +1515,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "import.graphqls" "member.graphqls" "report.graphqls" "schema.graphqls"
+//go:embed "budget.graphqls" "import.graphqls" "member.graphqls" "report.graphqls" "schema.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1468,6 +1527,7 @@ func sourceData(filename string) string {
 }
 
 var sources = []*ast.Source{
+	{Name: "budget.graphqls", Input: sourceData("budget.graphqls"), BuiltIn: false},
 	{Name: "import.graphqls", Input: sourceData("import.graphqls"), BuiltIn: false},
 	{Name: "member.graphqls", Input: sourceData("member.graphqls"), BuiltIn: false},
 	{Name: "report.graphqls", Input: sourceData("report.graphqls"), BuiltIn: false},
@@ -2196,6 +2256,22 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_budgetProgress_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "householdID", ec.unmarshalNID2int)
+	if err != nil {
+		return nil, err
+	}
+	args["householdID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "month", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["month"] = arg1
 	return args, nil
 }
 
@@ -2989,6 +3065,180 @@ func (ec *executionContext) fieldContext_Budget_category(_ context.Context, fiel
 				return ec.fieldContext_Category_recurringBills(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BudgetProgressEntry_budgetID(ctx context.Context, field graphql.CollectedField, obj *model.BudgetProgressEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BudgetProgressEntry_budgetID,
+		func(ctx context.Context) (any, error) {
+			return obj.BudgetID, nil
+		},
+		nil,
+		ec.marshalNID2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BudgetProgressEntry_budgetID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BudgetProgressEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BudgetProgressEntry_categoryID(ctx context.Context, field graphql.CollectedField, obj *model.BudgetProgressEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BudgetProgressEntry_categoryID,
+		func(ctx context.Context) (any, error) {
+			return obj.CategoryID, nil
+		},
+		nil,
+		ec.marshalNID2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BudgetProgressEntry_categoryID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BudgetProgressEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BudgetProgressEntry_month(ctx context.Context, field graphql.CollectedField, obj *model.BudgetProgressEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BudgetProgressEntry_month,
+		func(ctx context.Context) (any, error) {
+			return obj.Month, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BudgetProgressEntry_month(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BudgetProgressEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BudgetProgressEntry_amountCents(ctx context.Context, field graphql.CollectedField, obj *model.BudgetProgressEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BudgetProgressEntry_amountCents,
+		func(ctx context.Context) (any, error) {
+			return obj.AmountCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BudgetProgressEntry_amountCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BudgetProgressEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BudgetProgressEntry_spentCents(ctx context.Context, field graphql.CollectedField, obj *model.BudgetProgressEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BudgetProgressEntry_spentCents,
+		func(ctx context.Context) (any, error) {
+			return obj.SpentCents, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BudgetProgressEntry_spentCents(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BudgetProgressEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BudgetProgressEntry_rollover(ctx context.Context, field graphql.CollectedField, obj *model.BudgetProgressEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BudgetProgressEntry_rollover,
+		func(ctx context.Context) (any, error) {
+			return obj.Rollover, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BudgetProgressEntry_rollover(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BudgetProgressEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -6612,6 +6862,61 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_budgetProgress(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_budgetProgress,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().BudgetProgress(ctx, fc.Args["householdID"].(int), fc.Args["month"].(string))
+		},
+		nil,
+		ec.marshalNBudgetProgressEntry2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBudgetProgressEntryᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_budgetProgress(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "budgetID":
+				return ec.fieldContext_BudgetProgressEntry_budgetID(ctx, field)
+			case "categoryID":
+				return ec.fieldContext_BudgetProgressEntry_categoryID(ctx, field)
+			case "month":
+				return ec.fieldContext_BudgetProgressEntry_month(ctx, field)
+			case "amountCents":
+				return ec.fieldContext_BudgetProgressEntry_amountCents(ctx, field)
+			case "spentCents":
+				return ec.fieldContext_BudgetProgressEntry_spentCents(ctx, field)
+			case "rollover":
+				return ec.fieldContext_BudgetProgressEntry_rollover(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BudgetProgressEntry", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_budgetProgress_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -12030,6 +12335,70 @@ func (ec *executionContext) _Budget(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var budgetProgressEntryImplementors = []string{"BudgetProgressEntry"}
+
+func (ec *executionContext) _BudgetProgressEntry(ctx context.Context, sel ast.SelectionSet, obj *model.BudgetProgressEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, budgetProgressEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BudgetProgressEntry")
+		case "budgetID":
+			out.Values[i] = ec._BudgetProgressEntry_budgetID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "categoryID":
+			out.Values[i] = ec._BudgetProgressEntry_categoryID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "month":
+			out.Values[i] = ec._BudgetProgressEntry_month(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amountCents":
+			out.Values[i] = ec._BudgetProgressEntry_amountCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "spentCents":
+			out.Values[i] = ec._BudgetProgressEntry_spentCents(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rollover":
+			out.Values[i] = ec._BudgetProgressEntry_rollover(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var categoryImplementors = []string{"Category", "Node"}
 
 func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet, obj *ent.Category) graphql.Marshaler {
@@ -13706,6 +14075,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "budgetProgress":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_budgetProgress(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "bankPresets":
 			field := field
 
@@ -15065,6 +15456,32 @@ func (ec *executionContext) marshalNBudget2ᚖgithubᚗcomᚋexpenserᚋexpense�
 		return graphql.Null
 	}
 	return ec._Budget(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNBudgetProgressEntry2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBudgetProgressEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.BudgetProgressEntry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBudgetProgressEntry2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBudgetProgressEntry(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBudgetProgressEntry2ᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋgraphᚋmodelᚐBudgetProgressEntry(ctx context.Context, sel ast.SelectionSet, v *model.BudgetProgressEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BudgetProgressEntry(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋexpenserᚋexpenseᚑplannerᚋentᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*ent.Category) graphql.Marshaler {

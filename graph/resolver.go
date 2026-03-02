@@ -19,6 +19,7 @@ type Resolver struct {
 	ImportSvc    *service.ImportService
 	ReportSvc    *service.ReportService
 	HouseholdSvc *service.HouseholdService
+	BudgetSvc    *service.BudgetService
 }
 
 func intPtr(i int) *int {

@@ -44,6 +44,16 @@ type BankPreset struct {
 	Mapping  *ColumnMappingOutput `json:"mapping"`
 }
 
+// Budget vs actual spending for a single category in a month.
+type BudgetProgressEntry struct {
+	BudgetID    int    `json:"budgetID"`
+	CategoryID  int    `json:"categoryID"`
+	Month       string `json:"month"`
+	AmountCents int    `json:"amountCents"`
+	SpentCents  int    `json:"spentCents"`
+	Rollover    bool   `json:"rollover"`
+}
+
 // Spending breakdown for a single category.
 type CategorySpend struct {
 	CategoryID int     `json:"categoryID"`

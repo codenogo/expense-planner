@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "001",
+  "slug": "add-tests",
+  "goal": "Add resolver auth guard tests for userHouseholdIDs and membership-loop authorization pattern to close the test coverage gap from the review",
+  "files": [
+    "internal/middleware/auth.go",
+    "graph/resolver_test.go"
+  ],
+  "verify": [
+    "go test ./graph/ -v -run TestUserHouseholdIDs",
+    "go test ./... -short"
+  ],
+  "timestamp": "2026-03-02T12:15:00Z"
+}

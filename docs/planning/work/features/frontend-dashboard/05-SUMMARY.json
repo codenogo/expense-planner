@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "feature": "frontend-dashboard",
+  "planNumber": "05",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create transaction GraphQL operations and add expense form",
+      "files": [
+        "web/src/types/category.ts",
+        "web/src/graphql/categories.ts",
+        "web/src/graphql/transactions.ts",
+        "web/src/pages/transactions/add-expense.tsx",
+        "web/src/components/ui/calendar.tsx",
+        "web/src/components/ui/popover.tsx"
+      ],
+      "commit": "8937612"
+    },
+    {
+      "task": "Create add income form",
+      "files": [
+        "web/src/graphql/transactions.ts",
+        "web/src/pages/transactions/add-income.tsx"
+      ],
+      "commit": "8937612"
+    },
+    {
+      "task": "Build transaction list page with filtering",
+      "files": [
+        "web/src/graphql/transactions.ts",
+        "web/src/pages/transactions/index.tsx",
+        "web/src/components/ui/tabs.tsx",
+        "web/src/components/ui/sonner.tsx",
+        "web/src/app.tsx"
+      ],
+      "commit": "8937612"
+    }
+  ],
+  "verification": [
+    {"command": "cd web && npm run build", "result": "pass"},
+    {"command": "cd web && npx vitest run src/lib/format.test.ts", "result": "pass (6/6)"}
+  ],
+  "commit": "8937612",
+  "timestamp": "2026-03-02T05:20:00Z"
+}

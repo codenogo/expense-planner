@@ -21,9 +21,19 @@ import (
 
 // PreviewCSVImport is the resolver for the previewCSVImport field.
 func (r *mutationResolver) PreviewCSVImport(ctx context.Context, csvContent string, mapping model.ColumnMappingInput, householdID int) ([]*model.ImportPreviewRow, error) {
-	uc := middleware.UserFromContext(ctx)
-	if uc == nil {
-		return nil, fmt.Errorf("authentication required")
+	_, hhIDs, err := userHouseholdIDs(ctx, r.Client)
+	if err != nil {
+		return nil, err
+	}
+	allowed := false
+	for _, id := range hhIDs {
+		if id == householdID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return nil, fmt.Errorf("access denied to household %d", householdID)
 	}
 
 	// Validate column mapping indices are non-negative.

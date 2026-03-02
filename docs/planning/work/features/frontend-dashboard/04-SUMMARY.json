@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "feature": "frontend-dashboard",
+  "planNumber": "04",
+  "outcome": "complete",
+  "changes": [
+    {
+      "task": "Create dashboard GraphQL operations and summary cards",
+      "files": [
+        "web/src/types/reports.ts",
+        "web/src/graphql/reports.ts",
+        "web/src/lib/format.ts",
+        "web/src/lib/format.test.ts",
+        "web/src/components/dashboard/summary-cards.tsx",
+        "web/src/pages/dashboard.tsx",
+        "web/src/app.tsx"
+      ],
+      "commit": "d3881fe"
+    },
+    {
+      "task": "Add spending by category chart to dashboard",
+      "files": [
+        "web/src/components/dashboard/spending-chart.tsx",
+        "web/src/graphql/reports.ts",
+        "web/src/pages/dashboard.tsx"
+      ],
+      "commit": "619652d"
+    },
+    {
+      "task": "Add recent transactions list to dashboard",
+      "files": [
+        "web/src/types/transaction.ts",
+        "web/src/components/dashboard/recent-transactions.tsx",
+        "web/src/pages/dashboard.tsx"
+      ],
+      "commit": "50c4fe6"
+    }
+  ],
+  "verification": [
+    {"command": "cd web && npm run build", "result": "pass"},
+    {"command": "cd web && npx vitest run src/lib/format.test.ts", "result": "pass (6/6)"}
+  ],
+  "commit": "50c4fe6",
+  "timestamp": "2026-03-02T04:15:00Z"
+}
